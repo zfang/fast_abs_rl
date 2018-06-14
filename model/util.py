@@ -3,6 +3,18 @@ import math
 import torch
 from torch.nn import functional as F
 
+DEVICE = None
+
+
+def get_device():
+    global DEVICE
+    if DEVICE is None:
+        if torch.cuda.is_available():
+            DEVICE = torch.device('cuda')
+        else:
+            DEVICE = torch.device('cpu')
+    return DEVICE
+
 
 #################### general sequence helper #########################
 def len_mask(lens, device):
@@ -17,14 +29,16 @@ def len_mask(lens, device):
         mask[i, :l].fill_(1)
     return mask
 
+
 def sequence_mean(sequence, seq_lens, dim=1):
     if seq_lens:
-        assert sequence.size(0) == len(seq_lens)   # batch_size
+        assert sequence.size(0) == len(seq_lens)  # batch_size
         sum_ = torch.sum(sequence, dim=dim, keepdim=False)
-        mean = torch.stack([s/l for s, l in zip(sum_, seq_lens)], dim=0)
+        mean = torch.stack([s / l for s, l in zip(sum_, seq_lens)], dim=0)
     else:
         mean = torch.mean(sequence, dim=dim, keepdim=False)
     return mean
+
 
 def sequence_loss(logits, targets, xent_fn=None, pad_idx=0):
     """ functional interface of SequenceLoss"""
@@ -54,10 +68,11 @@ def reorder_sequence(sequence_emb, order, batch_first=False):
     batch_dim = 0 if batch_first else 1
     assert len(order) == sequence_emb.size()[batch_dim]
 
-    order = torch.LongTensor(order).to(sequence_emb.get_device())
+    order = torch.LongTensor(order).to(get_device())
     sorted_ = sequence_emb.index_select(index=order, dim=batch_dim)
 
     return sorted_
+
 
 def reorder_lstm_states(lstm_states, order):
     """
@@ -69,7 +84,7 @@ def reorder_lstm_states(lstm_states, order):
     assert lstm_states[0].size() == lstm_states[1].size()
     assert len(order) == lstm_states[0].size()[1]
 
-    order = torch.LongTensor(order).to(lstm_states[0].get_device())
+    order = torch.LongTensor(order).to(get_device())
     sorted_states = (lstm_states[0].index_select(index=order, dim=1),
                      lstm_states[1].index_select(index=order, dim=1))
 

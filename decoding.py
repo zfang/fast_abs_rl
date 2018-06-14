@@ -1,30 +1,30 @@
 """ decoding utilities"""
 import json
-import re
 import os
-from os.path import join
 import pickle as pkl
+import re
 from itertools import starmap
-
-from cytoolz import curry
+from os.path import join
 
 import torch
+from cytoolz import curry
 
-from utils import PAD, UNK, START, END
+from data.batcher import conver2id, pad_batch_tensorize
+from data.data import CnnDmDataset
 from model.copy_summ import CopySumm
 from model.extract import ExtractSumm, PtrExtractSumm
 from model.rl import ActorCritic
-from data.batcher import conver2id, pad_batch_tensorize
-from data.data import CnnDmDataset
-
+from utils import PAD, UNK, START, END
 
 try:
     DATASET_DIR = os.environ['DATA']
 except KeyError:
     print('please use environment variable to specify data directories')
 
+
 class DecodeDataset(CnnDmDataset):
     """ get the article sentences only (for decoding use)"""
+
     def __init__(self, split):
         assert split in ['val', 'test']
         super().__init__(split, DATASET_DIR)
@@ -48,7 +48,8 @@ def load_best_ckpt(model_dir, reverse=False):
                    key=lambda c: float(c.split('-')[1]), reverse=reverse)
     print('loading checkpoint {}...'.format(ckpts[0]))
     ckpt = torch.load(
-        join(model_dir, 'ckpt/{}'.format(ckpts[0]))
+        join(model_dir, 'ckpt/{}'.format(ckpts[0])),
+        map_location=lambda storage, loc: storage
     )['state_dict']
     return ckpt
 
@@ -79,10 +80,10 @@ class Abstractor(object):
         articles = conver2id(UNK, self._word2id, raw_article_sents)
         art_lens = [len(art) for art in articles]
         article = pad_batch_tensorize(articles, PAD, cuda=False
-                                     ).to(self._device)
+                                      ).to(self._device)
         extend_arts = conver2id(UNK, ext_word2id, raw_article_sents)
         extend_art = pad_batch_tensorize(extend_arts, PAD, cuda=False
-                                        ).to(self._device)
+                                         ).to(self._device)
         extend_vsize = len(ext_word2id)
         dec_args = (article, art_lens, extend_art, extend_vsize,
                     START, END, UNK, self._max_len)
@@ -92,8 +93,10 @@ class Abstractor(object):
         self._net.eval()
         dec_args, id2word = self._prepro(raw_article_sents)
         decs, attns = self._net.batch_decode(*dec_args)
+
         def argmax(arr, keys):
             return arr[max(range(len(arr)), key=lambda i: keys[i].item())]
+
         dec_sents = []
         for i, raw_words in enumerate(raw_article_sents):
             dec = []
@@ -118,6 +121,7 @@ class BeamAbstractor(Abstractor):
                                  zip(all_beams, raw_article_sents)))
         return all_beams
 
+
 @curry
 def _process_beam(id2word, beam, art_sent):
     def process_hyp(hyp):
@@ -132,6 +136,7 @@ def _process_beam(id2word, beam, art_sent):
         del hyp.hists
         del hyp.attns
         return hyp
+
     return list(map(process_hyp, beam))
 
 
@@ -160,7 +165,7 @@ class Extractor(object):
         n_art = len(raw_article_sents)
         articles = conver2id(UNK, self._word2id, raw_article_sents)
         article = pad_batch_tensorize(articles, PAD, cuda=False
-                                     ).to(self._device)
+                                      ).to(self._device)
         indices = self._net.extract([article], k=min(n_art, self._max_ext))
         return indices
 
@@ -174,8 +179,9 @@ class ArticleBatcher(object):
     def __call__(self, raw_article_sents):
         articles = conver2id(UNK, self._word2id, raw_article_sents)
         article = pad_batch_tensorize(articles, PAD, cuda=False
-                                     ).to(self._device)
+                                      ).to(self._device)
         return article
+
 
 class RLExtractor(object):
     def __init__(self, ext_dir, cuda=True):

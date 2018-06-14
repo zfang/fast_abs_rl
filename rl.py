@@ -3,7 +3,6 @@ import math
 from time import time
 from datetime import timedelta
 
-from toolz.sandbox.core import unzip
 from cytoolz import concat
 
 import numpy as np
@@ -13,6 +12,7 @@ from torch import autograd
 from torch.nn.utils import clip_grad_norm_
 
 from metric import compute_rouge_l, compute_rouge_n
+from model.util import get_device
 from training import BasicPipeline
 
 
@@ -86,7 +86,7 @@ def a2c_train_step(agent, abstractor, loader, opt, grad_fn,
     probs = list(concat(probs))
     baselines = list(concat(baselines))
     # standardize rewards
-    reward = torch.Tensor(rewards).to(baselines[0].get_device())
+    reward = torch.Tensor(rewards).to(get_device())
     reward = (reward - reward.mean()) / (
         reward.std() + float(np.finfo(np.float32).eps))
     baseline = torch.cat(baselines).squeeze()
@@ -101,7 +101,7 @@ def a2c_train_step(agent, abstractor, loader, opt, grad_fn,
     # backprop and update
     autograd.backward(
         [critic_loss] + losses,
-        [torch.ones(1).to(critic_loss.get_device())]*(1+len(losses))
+        [torch.ones(1).to(get_device())]*(1+len(losses))
     )
     grad_log = grad_fn()
     opt.step()
