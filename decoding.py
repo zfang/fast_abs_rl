@@ -205,3 +205,11 @@ class RLExtractor(object):
         self._net.eval()
         indices = self._net(raw_article_sents)
         return indices
+
+    @property
+    def net(self):
+        return self._net
+
+    @property
+    def word2id(self):
+        return self._word2id

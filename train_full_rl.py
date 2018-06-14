@@ -1,32 +1,28 @@
 """ full training (train rnn-ext + abs + RL) """
 import argparse
 import json
-import pickle as pkl
 import os
-from os.path import join, exists
+import pickle as pkl
 from itertools import cycle
-
-from toolz.sandbox.core import unzip
-from cytoolz import identity
+from os.path import join, exists
 
 import torch
+from cytoolz import identity
+from toolz.sandbox.core import unzip
 from torch import optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 
-from data.data import CnnDmDataset
 from data.batcher import tokenize
-
-from model.rl import ActorCritic
-from model.extract import PtrExtractSumm
-
-from training import BasicTrainer
-from rl import get_grad_fn
-from rl import A2CPipeline
+from data.data import CnnDmDataset
+from decoding import Abstractor, RLExtractor, ArticleBatcher
 from decoding import load_best_ckpt
-from decoding import Abstractor, ArticleBatcher
 from metric import compute_rouge_l, compute_rouge_n
-
+from model.extract import PtrExtractSumm
+from model.rl import ActorCritic
+from rl import A2CPipeline
+from rl import get_grad_fn
+from training import BasicTrainer
 
 MAX_ABS_LEN = 30
 
@@ -38,6 +34,7 @@ except KeyError:
 
 class RLDataset(CnnDmDataset):
     """ get the article sentences only (for decoding use)"""
+
     def __init__(self, split):
         super().__init__(split, DATA_DIR)
 
@@ -46,6 +43,7 @@ class RLDataset(CnnDmDataset):
         art_sents = js_data['article']
         abs_sents = js_data['abstract']
         return art_sents, abs_sents
+
 
 def load_ext_net(ext_dir):
     ext_meta = json.load(open(join(ext_dir, 'meta.json')))
@@ -56,6 +54,24 @@ def load_ext_net(ext_dir):
     ext = PtrExtractSumm(**ext_args)
     ext.load_state_dict(ext_ckpt)
     return ext, vocab
+
+
+def configure_pretrained_net(pretrained_dir, cuda):
+    """ load pretrained sub-modules and build the actor-critic network"""
+    abs_dir = os.path.join(pretrained_dir, 'abstractor/')
+    abstractor = Abstractor(abs_dir, MAX_ABS_LEN, cuda)
+
+    ext_dir = pretrained_dir
+    extractor = RLExtractor(pretrained_dir, cuda=cuda)
+    agent = extractor.net
+    agent_vocab = extractor.word2id
+
+    net_args = {}
+    net_args['abstractor'] = (None if abs_dir is None
+                              else json.load(open(join(abs_dir, 'meta.json'))))
+    net_args['extractor'] = json.load(open(join(ext_dir, 'meta.json')))['net_args']['extractor']
+
+    return agent, agent_vocab, abstractor, net_args
 
 
 def configure_net(abs_dir, ext_dir, cuda):
@@ -76,8 +92,7 @@ def configure_net(abs_dir, ext_dir, cuda):
         agent = agent.cuda()
 
     net_args = {}
-    net_args['abstractor'] = (None if abs_dir is None
-                              else json.load(open(join(abs_dir, 'meta.json'))))
+    net_args['abstractor'] = json.load(open(join(abs_dir, 'meta.json')))
     net_args['extractor'] = json.load(open(join(ext_dir, 'meta.json')))
 
     return agent, agent_vocab, abstractor, net_args
@@ -90,16 +105,17 @@ def configure_training(opt, lr, clip_grad, lr_decay, batch_size,
     opt_kwargs['lr'] = lr
 
     train_params = {}
-    train_params['optimizer']      = (opt, opt_kwargs)
+    train_params['optimizer'] = (opt, opt_kwargs)
     train_params['clip_grad_norm'] = clip_grad
-    train_params['batch_size']     = batch_size
-    train_params['lr_decay']       = lr_decay
-    train_params['gamma']          = gamma
-    train_params['reward']         = reward
-    train_params['stop_coeff']     = stop_coeff
-    train_params['stop_reward']    = stop_reward
+    train_params['batch_size'] = batch_size
+    train_params['lr_decay'] = lr_decay
+    train_params['gamma'] = gamma
+    train_params['reward'] = reward
+    train_params['stop_coeff'] = stop_coeff
+    train_params['stop_reward'] = stop_reward
 
     return train_params
+
 
 def build_batchers(batch_size):
     def coll(batch):
@@ -107,6 +123,7 @@ def build_batchers(batch_size):
         art_sents = list(filter(bool, map(tokenize(None), art_batch)))
         abs_sents = list(filter(bool, map(tokenize(None), abs_batch)))
         return art_sents, abs_sents
+
     loader = DataLoader(
         RLDataset('train'), batch_size=batch_size,
         shuffle=True, num_workers=4,
@@ -125,8 +142,12 @@ def train(args):
         os.makedirs(args.path)
 
     # make net
-    agent, agent_vocab, abstractor, net_args = configure_net(
-        args.abs_dir, args.ext_dir, args.cuda)
+    if args.pretrained_dir:
+        agent, agent_vocab, abstractor, net_args = configure_pretrained_net(
+            args.pretrained_dir, args.cuda)
+    else:
+        agent, agent_vocab, abstractor, net_args = configure_net(
+            args.abs_dir, args.ext_dir, args.cuda)
 
     # configure training setting
     assert args.stop > 0
@@ -153,9 +174,9 @@ def train(args):
             pkl.dump(abs_vocab, f)
     # save configuration
     meta = {}
-    meta['net']           = 'rnn-ext_abs_rl'
-    meta['net_args']      = net_args
-    meta['train_params']  = train_params
+    meta['net'] = 'rnn-ext_abs_rl'
+    meta['net_args'] = net_args
+    meta['train_params'] = train_params
     with open(join(args.path, 'meta.json'), 'w') as f:
         json.dump(meta, f, indent=4)
     with open(join(args.path, 'agent_vocab.pkl'), 'wb') as f:
@@ -188,12 +209,13 @@ if __name__ == '__main__':
     )
     parser.add_argument('--path', required=True, help='root of the model')
 
-
     # model options
     parser.add_argument('--abs_dir', action='store',
                         help='pretrained summarizer model root path')
     parser.add_argument('--ext_dir', action='store',
                         help='root of the extractor model')
+    parser.add_argument('--pretrained_dir', action='store',
+                        help='root of the pretrained model')
     parser.add_argument('--ckpt', type=int, action='store', default=None,
                         help='ckeckpoint used decode')
 
