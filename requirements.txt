@@ -1,5 +1,6 @@
 torch==0.4.0
-gensim
+gensim==3.4.0
 tensorboardX
 cytoolz
 pyrouge
+lib/embeddings-0.0.8-py3-none-any.whl

@@ -3,23 +3,26 @@ import argparse
 import json
 import logging
 import os
+from datetime import timedelta
 from os.path import join, exists
 from time import time
-from datetime import timedelta
 
-from cytoolz import concatv
 import gensim
+import numpy as np
+from cytoolz import concatv
+from embeddings import Word2VecEmbedding
 
 from utils import count_data
-
 
 try:
     DATA_DIR = os.environ['DATA']
 except KeyError:
     print('please use environment variable to specify data directories')
 
+
 class Sentences(object):
     """ needed for gensim word2vec training"""
+
     def __init__(self):
         self._path = join(DATA_DIR, 'train')
         self._n_data = count_data(self._path)
@@ -37,25 +40,34 @@ def main(args):
                         level=logging.INFO)
     start = time()
     save_dir = args.path
-    if not exists(save_dir):
-        os.makedirs(save_dir)
+    os.makedirs(save_dir, exist_ok=True)
 
     sentences = Sentences()
     model = gensim.models.Word2Vec(
         size=args.dim, min_count=5, workers=16, sg=1)
     model.build_vocab(sentences)
-    print('vocab built in {}'.format(timedelta(seconds=time()-start)))
+    print('vocab built in {}'.format(timedelta(seconds=time() - start)))
+
+    if args.use_pretrained:
+        embedding = Word2VecEmbedding()
+        for word, data in model.wv.vocab.items():
+            model.wv.vectors[data.index] = embedding.emb(
+                word,
+                default=lambda: np.random.uniform(-0.1, 0.1, args.dim).astype('float32'))
+            model.trainables.vectors_lockf[data.index] = 1.0
+
     model.train(sentences,
-                total_examples=model.corpus_count, epochs=model.iter)
+                total_examples=model.corpus_count,
+                epochs=model.iter)
 
     model.save(join(save_dir, 'word2vec.{}d.{}k.bin'.format(
-        args.dim, len(model.wv.vocab)//1000)))
+        args.dim, len(model.wv.vocab) // 1000)))
     model.wv.save_word2vec_format(join(
         save_dir,
-        'word2vec.{}d.{}k.w2v'.format(args.dim, len(model.wv.vocab)//1000)
+        'word2vec.{}d.{}k.w2v'.format(args.dim, len(model.wv.vocab) // 1000)
     ))
 
-    print('word2vec trained in {}'.format(timedelta(seconds=time()-start)))
+    print('word2vec trained in {}'.format(timedelta(seconds=time() - start)))
 
 
 if __name__ == '__main__':
@@ -64,6 +76,10 @@ if __name__ == '__main__':
     )
     parser.add_argument('--path', required=True, help='root of the model')
     parser.add_argument('--dim', action='store', type=int, default=128)
+    parser.add_argument('--use-pretrained', action='store_true')
     args = parser.parse_args()
+
+    if args.use_pretrained:
+        args.dim = 300
 
     main(args)
