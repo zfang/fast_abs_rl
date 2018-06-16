@@ -1,13 +1,12 @@
 import torch
 from torch import nn
-from torch.nn import init
 from torch.nn import functional as F
+from torch.nn import init
 
-from .attention import step_attention
-from .util import len_mask, get_device
-from .summ import Seq2SeqSumm, AttentionalLSTMDecoder
 from . import beam_search as bs
-
+from .attention import step_attention
+from .summ import Seq2SeqSumm, AttentionalLSTMDecoder
+from .util import len_mask, get_device
 
 INIT = 1e-2
 
@@ -40,7 +39,7 @@ class CopySumm(Seq2SeqSumm):
                  n_hidden, bidirectional, n_layer, dropout=0.0):
         super().__init__(vocab_size, emb_dim,
                          n_hidden, bidirectional, n_layer, dropout)
-        self._copy = _CopyLinear(n_hidden, n_hidden, 2*emb_dim)
+        self._copy = _CopyLinear(n_hidden, n_hidden, 2 * emb_dim)
         self._decoder = CopyLSTMDecoder(
             self._copy, self._embedding, self._dec_lstm,
             self._attn_wq, self._projection
@@ -63,7 +62,7 @@ class CopySumm(Seq2SeqSumm):
         attention, init_dec_states = self.encode(article, art_lens)
         mask = len_mask(art_lens, get_device()).unsqueeze(-2)
         attention = (attention, mask, extend_art, extend_vsize)
-        tok = torch.LongTensor([go]*batch_size).to(get_device())
+        tok = torch.LongTensor([go] * batch_size).to(get_device())
         outputs = []
         attns = []
         states = init_dec_states
@@ -144,7 +143,7 @@ class CopySumm(Seq2SeqSumm):
                     outputs[i] = finished[:beam_size]
                     # exclude finished inputs
                     (attention, mask, extend_art, extend_vsize
-                    ) = all_attention
+                     ) = all_attention
                     masks = [mask[j] for j, o in enumerate(outputs)
                              if o is None]
                     ind = [j for j, o in enumerate(outputs) if o is None]
@@ -168,7 +167,7 @@ class CopySumm(Seq2SeqSumm):
             for i, (o, f, b) in enumerate(zip(outputs,
                                               finished_beams, all_beams)):
                 if o is None:
-                    outputs[i] = (f+b)[:beam_size]
+                    outputs[i] = (f + b)[:beam_size]
         return outputs
 
 
@@ -198,13 +197,12 @@ class CopyLSTMDecoder(AttentionalLSTMDecoder):
         # add the copy prob to existing vocab distribution
         lp = torch.log(
             ((-copy_prob + 1) * gen_prob
-            ).scatter_add(
+             ).scatter_add(
                 dim=1,
                 index=extend_src.expand_as(score),
                 source=score * copy_prob
-        ) + 1e-8)  # numerical stability for log
+            ) + 1e-8)  # numerical stability for log
         return lp, (states, dec_out), score
-
 
     def topk_step(self, tok, states, attention, k):
         """tok:[BB, B], states ([L, BB, B, D]*2, [BB, B, D])"""
@@ -215,7 +213,7 @@ class CopyLSTMDecoder(AttentionalLSTMDecoder):
         beam, batch = tok.size()
         lstm_in_beamable = torch.cat(
             [self._embedding(tok), prev_out], dim=-1)
-        lstm_in = lstm_in_beamable.contiguous().view(beam*batch, -1)
+        lstm_in = lstm_in_beamable.contiguous().view(beam * batch, -1)
         prev_states = (h.contiguous().view(nl, -1, d),
                        c.contiguous().view(nl, -1, d))
         h, c = self._lstm(lstm_in, prev_states)
@@ -232,18 +230,18 @@ class CopyLSTMDecoder(AttentionalLSTMDecoder):
 
         # copy mechanism is not beamable
         gen_prob = self._compute_gen_prob(
-            dec_out.contiguous().view(batch*beam, -1), extend_vsize)
+            dec_out.contiguous().view(batch * beam, -1), extend_vsize)
         copy_prob = torch.sigmoid(
             self._copy(context, lstm_out, lstm_in_beamable)
         ).contiguous().view(-1, 1)
         lp = torch.log(
             ((-copy_prob + 1) * gen_prob
-            ).scatter_add(
+             ).scatter_add(
                 dim=1,
                 index=extend_src.expand_as(score).contiguous().view(
-                    beam*batch, -1),
-                source=score.contiguous().view(beam*batch, -1) * copy_prob
-        ) + 1e-8).contiguous().view(beam, batch, -1)
+                    beam * batch, -1),
+                source=score.contiguous().view(beam * batch, -1) * copy_prob
+            ) + 1e-8).contiguous().view(beam, batch, -1)
 
         k_lp, k_tok = lp.topk(k=k, dim=-1)
         return k_tok, k_lp, (states, dec_out), score
@@ -252,8 +250,8 @@ class CopyLSTMDecoder(AttentionalLSTMDecoder):
         logit = torch.mm(dec_out, self._embedding.weight.t())
         bsize, vsize = logit.size()
         if extend_vsize > vsize:
-            ext_logit = torch.Tensor(bsize, extend_vsize-vsize
-                                    ).to(get_device())
+            ext_logit = torch.Tensor(bsize, extend_vsize - vsize
+                                     ).to(get_device())
             ext_logit.fill_(eps)
             gen_logit = torch.cat([logit, ext_logit], dim=1)
         else:

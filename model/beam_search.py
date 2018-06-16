@@ -1,9 +1,8 @@
 """ beam-search utilities"""
 from collections import Counter
 
-from cytoolz import concat
-
 import torch
+from cytoolz import concat
 
 
 class _Hypothesis(object):
@@ -24,13 +23,13 @@ class _Hypothesis(object):
             attns = []
         else:
             attns = self.attns + [attn]
-        return [_Hypothesis(self.sequence+[t.item()],
-                            self.logprob+lp.item()-diverse*i, hists, attns)
+        return [_Hypothesis(self.sequence + [t.item()],
+                            self.logprob + lp.item() - diverse * i, hists, attns)
                 for i, (t, lp) in enumerate(zip(topk, logprobs))]
 
     def __lt__(self, other):
-        return (other.logprob/len(other.sequence)
-                < self.logprob/len(self.sequence))
+        return (other.logprob / len(other.sequence)
+                < self.logprob / len(self.sequence))
 
 
 def init_beam(start, hists):
@@ -105,11 +104,11 @@ def _clean_beam(finished, beam, end_tok, beam_size, remove_tri=True):
     """ remove completed sequence from beam """
     new_beam = []
     for h in sorted(beam, reverse=True,
-                    key=lambda h: h.logprob/len(h.sequence)):
+                    key=lambda h: h.logprob / len(h.sequence)):
         if remove_tri and _has_repeat_tri(h.sequence):
             h.logprob = -1e9
         if h.sequence[-1] == end_tok:
-            finished_hyp = _Hypothesis(h.sequence[:-1], # remove EOS
+            finished_hyp = _Hypothesis(h.sequence[:-1],  # remove EOS
                                        h.logprob, h.hists, h.attns)
             finished.append(finished_hyp)
         else:
@@ -122,11 +121,11 @@ def _clean_beam(finished, beam, end_tok, beam_size, remove_tri=True):
             new_beam.append(new_beam[0])
 
     finished = sorted(finished, reverse=True,
-                      key=lambda h: h.logprob/len(h.sequence))
+                      key=lambda h: h.logprob / len(h.sequence))
     return finished, new_beam
 
 
 def _has_repeat_tri(grams):
-    tri_grams = [tuple(grams[i:i+3]) for i in range(len(grams)-2)]
+    tri_grams = [tuple(grams[i:i + 3]) for i in range(len(grams) - 2)]
     cnt = Counter(tri_grams)
     return not all((cnt[g] <= 1 for g in cnt))

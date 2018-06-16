@@ -11,9 +11,8 @@ from torch import nn
 def count_data(path):
     """ count number of data in the given path"""
     matcher = re.compile(r'[0-9]+\.json')
-    match = lambda name: bool(matcher.match(name))
     names = os.listdir(path)
-    n_data = len(list(filter(match, names)))
+    n_data = len(list(filter(lambda name: bool(matcher.match(name)), names)))
     return n_data
 
 
@@ -56,4 +55,3 @@ def make_embedding(id2word, w2v_file, initializer=None):
             else:
                 oovs.append(i)
     return embedding, oovs
-

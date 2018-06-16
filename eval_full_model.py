@@ -6,7 +6,6 @@ from os.path import join, exists
 
 from evaluate import eval_meteor, eval_rouge
 
-
 try:
     _DATA_DIR = os.environ['DATA']
 except KeyError:

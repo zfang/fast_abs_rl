@@ -47,7 +47,7 @@ def lstm_encoder(sequence, lstm,
 
 
 def init_lstm_states(lstm, batch_size, device):
-    n_layer = lstm.num_layers*(2 if lstm.bidirectional else 1)
+    n_layer = lstm.num_layers * (2 if lstm.bidirectional else 1)
     n_hidden = lstm.hidden_size
 
     states = (torch.zeros(n_layer, batch_size, n_hidden).to(device),
@@ -57,6 +57,7 @@ def init_lstm_states(lstm, batch_size, device):
 
 class StackedLSTMCells(nn.Module):
     """ stack multiple LSTM Cells"""
+
     def __init__(self, cells, dropout=0.0):
         super().__init__()
         self._cells = nn.ModuleList(cells)
@@ -109,12 +110,13 @@ class MultiLayerLSTMCells(StackedLSTMCells):
     This class is a one-step version of the cudnn LSTM
     , or multi-layer version of LSTMCell
     """
+
     def __init__(self, input_size, hidden_size, num_layers,
                  bias=True, dropout=0.0):
         """ same as nn.LSTM but without (bidirectional)"""
         cells = []
         cells.append(nn.LSTMCell(input_size, hidden_size, bias))
-        for _ in range(num_layers-1):
+        for _ in range(num_layers - 1):
             cells.append(nn.LSTMCell(hidden_size, hidden_size, bias))
         super().__init__(cells, dropout)
 
@@ -129,7 +131,7 @@ class MultiLayerLSTMCells(StackedLSTMCells):
             for weight in [cell.weight_ih, cell.weight_hh]:
                 for w in torch.chunk(weight, 4, dim=0):
                     init.xavier_normal_(w)
-            #forget bias = 1
+            # forget bias = 1
             for bias in [cell.bias_ih, cell.bias_hh]:
                 torch.chunk(bias, 4, dim=0)[1].data.fill_(1)
 

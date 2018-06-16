@@ -1,17 +1,17 @@
 """ Evaluate the baselines ont ROUGE/METEOR"""
 import argparse
 import json
-import re
 import os
+import re
 from os.path import join, exists
 
 from evaluate import eval_meteor, eval_rouge
-
 
 try:
     _DATA_DIR = os.environ['DATA']
 except KeyError:
     print('please use environment variable to specify data directories')
+
 
 def make_summaries(decode_dir, n_ext):
     out_dir = join(decode_dir, 'output_top{}'.format(args.n_ext))
@@ -19,7 +19,7 @@ def make_summaries(decode_dir, n_ext):
     decs = os.listdir(join(decode_dir, 'output_0'))
     dec_matcher = re.compile('[0-9]*.dec')
     decs = sorted([d for d in decs if dec_matcher.match(d)],
-                   key=lambda d: float(d.split('.')[0]))
+                  key=lambda d: float(d.split('.')[0]))
     for d in decs:
         sents = []
         for i in range(n_ext):

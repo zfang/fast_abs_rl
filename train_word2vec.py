@@ -4,7 +4,7 @@ import json
 import logging
 import os
 from datetime import timedelta
-from os.path import join, exists
+from os.path import join
 from time import time
 
 import gensim

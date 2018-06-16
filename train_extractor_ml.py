@@ -2,31 +2,27 @@
 import argparse
 import json
 import os
-from os.path import join, exists
 import pickle as pkl
-
-from cytoolz import compose
+from os.path import join, exists
 
 import torch
+from cytoolz import compose
 from torch import optim
 from torch.nn import functional as F
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 
-from model.extract import ExtractSumm, PtrExtractSumm
-from model.util import sequence_loss
-from training import get_basic_grad_fn, basic_validate
-from training import BasicPipeline, BasicTrainer
-
-from utils import PAD, UNK
-from utils import make_vocab, make_embedding
-
-from data.data import CnnDmDataset
+from data.batcher import BucketedGenerater
 from data.batcher import coll_fn_extract, prepro_fn_extract
 from data.batcher import convert_batch_extract_ff, batchify_fn_extract_ff
 from data.batcher import convert_batch_extract_ptr, batchify_fn_extract_ptr
-from data.batcher import BucketedGenerater
-
+from data.data import CnnDmDataset
+from model.extract import ExtractSumm, PtrExtractSumm
+from model.util import sequence_loss
+from training import BasicPipeline, BasicTrainer
+from training import get_basic_grad_fn, basic_validate
+from utils import PAD, UNK
+from utils import make_vocab, make_embedding
 
 BUCKET_SIZE = 6400
 
@@ -35,10 +31,12 @@ try:
 except KeyError:
     print('please use environment variable to specify data directories')
 
+
 class ExtractDataset(CnnDmDataset):
     """ article sentences -> extraction indices
     (dataset created by greedily matching ROUGE)
     """
+
     def __init__(self, split):
         super().__init__(split, DATA_DIR)
 
@@ -51,9 +49,11 @@ class ExtractDataset(CnnDmDataset):
 def build_batchers(net_type, word2id, cuda, debug):
     assert net_type in ['ff', 'rnn']
     prepro = prepro_fn_extract(args.max_word, args.max_sent)
+
     def sort_key(sample):
         src_sents, _ = sample
         return len(src_sents)
+
     batchify_fn = (batchify_fn_extract_ff if net_type == 'ff'
                    else batchify_fn_extract_ptr)
     convert_batch = (convert_batch_extract_ff if net_type == 'ff'
@@ -84,11 +84,11 @@ def configure_net(net_type, vocab_size, emb_dim, conv_hidden,
                   lstm_hidden, lstm_layer, bidirectional):
     assert net_type in ['ff', 'rnn']
     net_args = {}
-    net_args['vocab_size']    = vocab_size
-    net_args['emb_dim']       = emb_dim
-    net_args['conv_hidden']   = conv_hidden
-    net_args['lstm_hidden']   = lstm_hidden
-    net_args['lstm_layer']    = lstm_layer
+    net_args['vocab_size'] = vocab_size
+    net_args['emb_dim'] = emb_dim
+    net_args['conv_hidden'] = conv_hidden
+    net_args['lstm_hidden'] = lstm_hidden
+    net_args['lstm_layer'] = lstm_layer
     net_args['bidirectional'] = bidirectional
 
     net = (ExtractSumm(**net_args) if net_type == 'ff'
@@ -104,16 +104,17 @@ def configure_training(net_type, opt, lr, clip_grad, lr_decay, batch_size):
     opt_kwargs['lr'] = lr
 
     train_params = {}
-    train_params['optimizer']      = (opt, opt_kwargs)
+    train_params['optimizer'] = (opt, opt_kwargs)
     train_params['clip_grad_norm'] = clip_grad
-    train_params['batch_size']     = batch_size
-    train_params['lr_decay']       = lr_decay
+    train_params['batch_size'] = batch_size
+    train_params['lr_decay'] = lr_decay
 
     if net_type == 'ff':
         criterion = lambda logit, target: F.binary_cross_entropy_with_logits(
             logit, target, reduce=False)
     else:
         ce = lambda logit, target: F.cross_entropy(logit, target, reduce=False)
+
         def criterion(logits, targets):
             return sequence_loss(logits, targets, ce, pad_idx=-1)
 
@@ -152,8 +153,8 @@ def main(args):
     with open(join(args.path, 'vocab.pkl'), 'wb') as f:
         pkl.dump(word2id, f, pkl.HIGHEST_PROTOCOL)
     meta = {}
-    meta['net']           = 'ml_{}_extractor'.format(args.net_type)
-    meta['net_args']      = net_args
+    meta['net'] = 'ml_{}_extractor'.format(args.net_type)
+    meta['net_args'] = net_args
     meta['traing_params'] = train_params
     with open(join(args.path, 'meta.json'), 'w') as f:
         json.dump(meta, f, indent=4)

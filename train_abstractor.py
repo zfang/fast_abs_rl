@@ -2,27 +2,24 @@
 import argparse
 import json
 import os
-from os.path import join, exists
 import pickle as pkl
-
-from cytoolz import compose
+from os.path import join, exists
 
 import torch
+from cytoolz import compose
 from torch import optim
 from torch.nn import functional as F
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 
-from model.copy_summ import CopySumm
-from model.util import sequence_loss
-from training import get_basic_grad_fn, basic_validate
-from training import BasicPipeline, BasicTrainer
-
-from data.data import CnnDmDataset
+from data.batcher import BucketedGenerater
 from data.batcher import coll_fn, prepro_fn
 from data.batcher import convert_batch_copy, batchify_fn_copy
-from data.batcher import BucketedGenerater
-
+from data.data import CnnDmDataset
+from model.copy_summ import CopySumm
+from model.util import sequence_loss
+from training import BasicPipeline, BasicTrainer
+from training import get_basic_grad_fn, basic_validate
 from utils import PAD, UNK, START, END
 from utils import make_vocab, make_embedding
 
@@ -35,10 +32,12 @@ try:
 except KeyError:
     print('please use environment variable to specify data directories')
 
+
 class MatchDataset(CnnDmDataset):
     """ single article sentence -> single abstract sentence
     (dataset created by greedily matching ROUGE)
     """
+
     def __init__(self, split):
         super().__init__(split, DATA_DIR)
 
@@ -53,11 +52,11 @@ class MatchDataset(CnnDmDataset):
 def configure_net(vocab_size, emb_dim,
                   n_hidden, bidirectional, n_layer):
     net_args = {}
-    net_args['vocab_size']    = vocab_size
-    net_args['emb_dim']       = emb_dim
-    net_args['n_hidden']      = n_hidden
+    net_args['vocab_size'] = vocab_size
+    net_args['emb_dim'] = emb_dim
+    net_args['n_hidden'] = n_hidden
     net_args['bidirectional'] = bidirectional
-    net_args['n_layer']       = n_layer
+    net_args['n_layer'] = n_layer
 
     net = CopySumm(**net_args)
     return net, net_args
@@ -70,22 +69,26 @@ def configure_training(opt, lr, clip_grad, lr_decay, batch_size):
     opt_kwargs['lr'] = lr
 
     train_params = {}
-    train_params['optimizer']      = (opt, opt_kwargs)
+    train_params['optimizer'] = (opt, opt_kwargs)
     train_params['clip_grad_norm'] = clip_grad
-    train_params['batch_size']     = batch_size
-    train_params['lr_decay']       = lr_decay
+    train_params['batch_size'] = batch_size
+    train_params['lr_decay'] = lr_decay
 
     nll = lambda logit, target: F.nll_loss(logit, target, reduce=False)
+
     def criterion(logits, targets):
         return sequence_loss(logits, targets, nll, pad_idx=PAD)
 
     return criterion, train_params
 
+
 def build_batchers(word2id, cuda, debug):
     prepro = prepro_fn(args.max_art, args.max_abs)
+
     def sort_key(sample):
         src, target = sample
         return (len(target), len(src))
+
     batchify = compose(
         batchify_fn_copy(PAD, START, END, cuda=cuda),
         convert_batch_copy(UNK, word2id)
@@ -108,6 +111,7 @@ def build_batchers(word2id, cuda, debug):
     val_batcher = BucketedGenerater(val_loader, prepro, sort_key, batchify,
                                     single_run=True, fork=not debug)
     return train_batcher, val_batcher
+
 
 def main(args):
     # create data batcher, vocabulary
@@ -139,8 +143,8 @@ def main(args):
     with open(join(args.path, 'vocab.pkl'), 'wb') as f:
         pkl.dump(word2id, f, pkl.HIGHEST_PROTOCOL)
     meta = {}
-    meta['net']           = 'base_abstractor'
-    meta['net_args']      = net_args
+    meta['net'] = 'base_abstractor'
+    meta['net_args'] = net_args
     meta['traing_params'] = train_params
     with open(join(args.path, 'meta.json'), 'w') as f:
         json.dump(meta, f, indent=4)
@@ -171,7 +175,6 @@ if __name__ == '__main__':
         description='training of the abstractor (ML)'
     )
     parser.add_argument('--path', required=True, help='root of the model')
-
 
     parser.add_argument('--vsize', type=int, action='store', default=30000,
                         help='vocabulary size')

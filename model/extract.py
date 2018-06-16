@@ -1,20 +1,22 @@
 import torch
 from torch import nn
-from torch.nn import init
 from torch.nn import functional as F
+from torch.nn import init
 
+from .attention import prob_normalize
 from .rnn import MultiLayerLSTMCells
 from .rnn import lstm_encoder
 from .util import sequence_mean, len_mask, get_device
-from .attention import prob_normalize
 
 INI = 1e-2
+
 
 class ConvSentEncoder(nn.Module):
     """
     Convolutional word-level sentence encoder
     w/ max-over-time pooling, [3, 4, 5] kernel sizes, ReLU activation
     """
+
     def __init__(self, vocab_size, emb_dim, n_hidden, dropout):
         super().__init__()
         self._embedding = nn.Embedding(vocab_size, emb_dim, padding_idx=0)
@@ -41,9 +43,9 @@ class LSTMEncoder(nn.Module):
     def __init__(self, input_dim, n_hidden, n_layer, dropout, bidirectional):
         super().__init__()
         self._init_h = nn.Parameter(
-            torch.Tensor(n_layer*(2 if bidirectional else 1), n_hidden))
+            torch.Tensor(n_layer * (2 if bidirectional else 1), n_hidden))
         self._init_c = nn.Parameter(
-            torch.Tensor(n_layer*(2 if bidirectional else 1), n_hidden))
+            torch.Tensor(n_layer * (2 if bidirectional else 1), n_hidden))
         init.uniform_(self._init_h, -INI, INI)
         init.uniform_(self._init_c, -INI, INI)
         self._lstm = nn.LSTM(input_dim, n_hidden, n_layer,
@@ -77,6 +79,7 @@ class LSTMEncoder(nn.Module):
 
 class ExtractSumm(nn.Module):
     """ ff-ext """
+
     def __init__(self, vocab_size, emb_dim,
                  conv_hidden, lstm_hidden, lstm_layer,
                  bidirectional, dropout=0.0):
@@ -84,7 +87,7 @@ class ExtractSumm(nn.Module):
         self._sent_enc = ConvSentEncoder(
             vocab_size, emb_dim, conv_hidden, dropout)
         self._art_enc = LSTMEncoder(
-            3*conv_hidden, lstm_hidden, lstm_layer,
+            3 * conv_hidden, lstm_hidden, lstm_layer,
             dropout=dropout, bidirectional=bidirectional
         )
 
@@ -127,11 +130,13 @@ class ExtractSumm(nn.Module):
             max_n = max(sent_nums)
             enc_sents = [self._sent_enc(art_sent)
                          for art_sent in article_sents]
+
             def zero(n, device):
                 z = torch.zeros(n, self._art_enc.input_size).to(device)
                 return z
+
             enc_sent = torch.stack(
-                [torch.cat([s, zero(max_n-n, get_device())],
+                [torch.cat([s, zero(max_n - n, get_device())],
                            dim=0) if n != max_n
                  else s
                  for s, n in zip(enc_sents, sent_nums)],
@@ -148,6 +153,7 @@ class ExtractSumm(nn.Module):
 
 class LSTMPointerNet(nn.Module):
     """Pointer network as in Vinyals et al """
+
     def __init__(self, input_dim, n_hidden, n_layer,
                  dropout, n_hop):
         super().__init__()
@@ -256,6 +262,7 @@ class LSTMPointerNet(nn.Module):
 
 class PtrExtractSumm(nn.Module):
     """ rnn-ext"""
+
     def __init__(self, emb_dim, vocab_size, conv_hidden,
                  lstm_hidden, lstm_layer, bidirectional,
                  n_hop=1, dropout=0.0):
@@ -263,7 +270,7 @@ class PtrExtractSumm(nn.Module):
         self._sent_enc = ConvSentEncoder(
             vocab_size, emb_dim, conv_hidden, dropout)
         self._art_enc = LSTMEncoder(
-            3*conv_hidden, lstm_hidden, lstm_layer,
+            3 * conv_hidden, lstm_hidden, lstm_layer,
             dropout=dropout, bidirectional=bidirectional
         )
         enc_out_dim = lstm_hidden * (2 if bidirectional else 1)
@@ -294,12 +301,14 @@ class PtrExtractSumm(nn.Module):
             max_n = max(sent_nums)
             enc_sents = [self._sent_enc(art_sent)
                          for art_sent in article_sents]
+
             def zero(n, device):
                 z = torch.zeros(n, self._art_enc.input_size).to(device)
                 return z
+
             enc_sent = torch.stack(
-                [torch.cat([s, zero(max_n-n, get_device())], dim=0)
-                   if n != max_n
+                [torch.cat([s, zero(max_n - n, get_device())], dim=0)
+                 if n != max_n
                  else s
                  for s, n in zip(enc_sents, sent_nums)],
                 dim=0

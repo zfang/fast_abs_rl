@@ -2,11 +2,10 @@ import torch
 from torch import nn
 from torch.nn import init
 
-from .rnn import lstm_encoder
-from .rnn import MultiLayerLSTMCells
 from .attention import step_attention
+from .rnn import MultiLayerLSTMCells
+from .rnn import lstm_encoder
 from .util import sequence_mean, len_mask
-
 
 INIT = 1e-2
 
@@ -36,7 +35,7 @@ class Seq2SeqSumm(nn.Module):
 
         # vanillat lstm / LNlstm
         self._dec_lstm = MultiLayerLSTMCells(
-            2*emb_dim, n_hidden, n_layer, dropout=dropout
+            2 * emb_dim, n_hidden, n_layer, dropout=dropout
         )
         # project encoder final states to decoder initial states
         enc_out_dim = n_hidden * (2 if bidirectional else 1)
@@ -50,7 +49,7 @@ class Seq2SeqSumm(nn.Module):
         # project decoder output to emb_dim, then
         # apply weight matrix from embedding layer
         self._projection = nn.Sequential(
-            nn.Linear(2*n_hidden, n_hidden),
+            nn.Linear(2 * n_hidden, n_hidden),
             nn.Tanh(),
             nn.Linear(n_hidden, emb_dim, bias=False)
         )
@@ -103,7 +102,7 @@ class Seq2SeqSumm(nn.Module):
         attention, init_dec_states = self.encode(article, art_lens)
         mask = len_mask(art_lens, attention.get_device()).unsqueeze(-2)
         attention = (attention, mask)
-        tok = torch.LongTensor([go]*batch_size).to(article.get_device())
+        tok = torch.LongTensor([go] * batch_size).to(article.get_device())
         outputs = []
         attns = []
         states = init_dec_states
@@ -149,7 +148,7 @@ class AttentionalLSTMDecoder(object):
         states = init_states
         logits = []
         for i in range(max_len):
-            tok = target[:, i:i+1]
+            tok = target[:, i:i + 1]
             logit, states, _ = self._step(tok, states, attention)
             logits.append(logit)
         logit = torch.stack(logits, dim=1)

@@ -1,14 +1,13 @@
 """ RL training utilities"""
 import math
-from time import time
 from datetime import timedelta
-
-from cytoolz import concat
+from time import time
 
 import numpy as np
 import torch
-from torch.nn import functional as F
+from cytoolz import concat
 from torch import autograd
+from torch.nn import functional as F
 from torch.nn.utils import clip_grad_norm_
 
 from metric import compute_rouge_l, compute_rouge_n
@@ -28,19 +27,19 @@ def a2c_validate(agent, abstractor, loader):
             ext_inds = []
             for raw_arts in art_batch:
                 indices = agent(raw_arts)
-                ext_inds += [(len(ext_sents), len(indices)-1)]
+                ext_inds += [(len(ext_sents), len(indices) - 1)]
                 ext_sents += [raw_arts[idx.item()]
                               for idx in indices if idx.item() < len(raw_arts)]
             all_summs = abstractor(ext_sents)
             for (j, n), abs_sents in zip(ext_inds, abs_batch):
-                summs = all_summs[j:j+n]
+                summs = all_summs[j:j + n]
                 # python ROUGE-1 (not official evaluation)
                 avg_reward += compute_rouge_n(list(concat(summs)),
                                               list(concat(abs_sents)), n=1)
                 i += 1
-    avg_reward /= (i/100)
+    avg_reward /= (i / 100)
     print('finished in {}! avg reward: {:.2f}'.format(
-        timedelta(seconds=int(time()-start)), avg_reward))
+        timedelta(seconds=int(time() - start)), avg_reward))
     return {'reward': avg_reward}
 
 
@@ -66,15 +65,15 @@ def a2c_train_step(agent, abstractor, loader, opt, grad_fn,
     rewards = []
     avg_reward = 0
     for inds, abss in zip(indices, abs_batch):
-        rs = ([reward_fn(summaries[i+j], abss[j])
-              for j in range(min(len(inds)-1, len(abss)))]
-              + [0 for _ in range(max(0, len(inds)-1-len(abss)))]
-              + [stop_coeff*stop_reward_fn(
-                  list(concat(summaries[i:i+len(inds)-1])),
-                  list(concat(abss)))])
+        rs = ([reward_fn(summaries[i + j], abss[j])
+               for j in range(min(len(inds) - 1, len(abss)))]
+              + [0 for _ in range(max(0, len(inds) - 1 - len(abss)))]
+              + [stop_coeff * stop_reward_fn(
+            list(concat(summaries[i:i + len(inds) - 1])),
+            list(concat(abss)))])
         assert len(rs) == len(inds)
-        avg_reward += rs[-1]/stop_coeff
-        i += len(inds)-1
+        avg_reward += rs[-1] / stop_coeff
+        i += len(inds) - 1
         # compute discounted rewards
         R = 0
         disc_rs = []
@@ -87,8 +86,10 @@ def a2c_train_step(agent, abstractor, loader, opt, grad_fn,
     baselines = list(concat(baselines))
     # standardize rewards
     reward = torch.Tensor(rewards).to(get_device())
-    reward = (reward - reward.mean()) / (
-        reward.std() + float(np.finfo(np.float32).eps))
+    # scale without mean shift on reward
+    # reward = (reward - reward.mean()) / (
+    #    reward.std() + float(np.finfo(np.float32).eps))
+    reward = reward / (torch.max(reward) - torch.min(reward))
     baseline = torch.cat(baselines).squeeze()
     avg_advantage = 0
     losses = []
@@ -96,19 +97,19 @@ def a2c_train_step(agent, abstractor, loader, opt, grad_fn,
         advantage = r - b
         avg_advantage += advantage
         losses.append(-p.log_prob(action)
-                      * (advantage/len(indices))) # divide by T*B
+                      * (advantage / len(indices)))  # divide by T*B
     critic_loss = F.mse_loss(baseline, reward)
     # backprop and update
     autograd.backward(
         [critic_loss] + losses,
-        [torch.ones(1).to(get_device())]*(1+len(losses))
+        [torch.ones(1).to(get_device())] * (1 + len(losses))
     )
     grad_log = grad_fn()
     opt.step()
     log_dict = {}
     log_dict.update(grad_log)
-    log_dict['reward'] = avg_reward/len(art_batch)
-    log_dict['advantage'] = avg_advantage.item()/len(indices)
+    log_dict['reward'] = avg_reward / len(art_batch)
+    log_dict['advantage'] = avg_advantage.item() / len(indices)
     log_dict['mse'] = critic_loss.item()
     assert not math.isnan(log_dict['grad_norm'])
     return log_dict
@@ -117,6 +118,7 @@ def a2c_train_step(agent, abstractor, loader, opt, grad_fn,
 def get_grad_fn(agent, clip_grad, max_grad=1e2):
     """ monitor gradient for each sub-component"""
     params = [p for p in agent.parameters()]
+
     def f():
         grad_log = {}
         for n, m in agent.named_children():
@@ -124,8 +126,8 @@ def get_grad_fn(agent, clip_grad, max_grad=1e2):
             for p in m.parameters():
                 if p.grad is not None:
                     tot_grad += p.grad.norm(2) ** 2
-            tot_grad = tot_grad ** (1/2)
-            grad_log['grad_norm'+n] = tot_grad.item()
+            tot_grad = tot_grad ** (1 / 2)
+            grad_log['grad_norm' + n] = tot_grad.item()
         grad_norm = clip_grad_norm_(
             [p for p in params if p.requires_grad], clip_grad)
         grad_norm = grad_norm.item()
@@ -134,6 +136,7 @@ def get_grad_fn(agent, clip_grad, max_grad=1e2):
             grad_norm = max_grad
         grad_log['grad_norm'] = grad_norm
         return grad_log
+
     return f
 
 

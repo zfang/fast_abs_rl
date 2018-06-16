@@ -2,20 +2,17 @@
 import argparse
 import json
 import os
-from os.path import join
 from datetime import timedelta
+from os.path import join
 from time import time
 
-from cytoolz import identity
-
 import torch
+from cytoolz import identity
 from torch.utils.data import DataLoader
 
 from data.batcher import tokenize
-
 from decoding import Abstractor, Extractor, DecodeDataset
 from decoding import make_html_safe
-
 
 MAX_ABS_NUM = 6  # need to set max sentences to extract for non-RL extractor
 
@@ -40,6 +37,7 @@ def decode(save_path, abs_dir, ext_dir, split, batch_size, max_len, cuda):
     def coll(batch):
         articles = list(filter(bool, batch))
         return articles
+
     dataset = DecodeDataset(split)
 
     n_data = len(dataset)
@@ -74,9 +72,9 @@ def decode(save_path, abs_dir, ext_dir, split, batch_size, max_len, cuda):
                 ext_inds += [(len(ext_arts), len(ext))]
                 ext_arts += list(map(lambda i: raw_art_sents[i], ext))
             dec_outs = abstractor(ext_arts)
-            assert i == batch_size*i_debug
+            assert i == batch_size * i_debug
             for j, n in ext_inds:
-                decoded_sents = [' '.join(dec) for dec in dec_outs[j:j+n]]
+                decoded_sents = [' '.join(dec) for dec in dec_outs[j:j + n]]
                 for k, dec_str in enumerate(decoded_sents):
                     with open(join(save_path, 'output_{}/{}.dec'.format(k, i)),
                               'w') as f:
@@ -84,7 +82,7 @@ def decode(save_path, abs_dir, ext_dir, split, batch_size, max_len, cuda):
 
                 i += 1
                 print('{}/{} ({:.2f}%) decoded in {} seconds\r'.format(
-                    i, n_data, i/n_data*100, timedelta(seconds=int(time()-start))
+                    i, n_data, i / n_data * 100, timedelta(seconds=int(time() - start))
                 ), end='')
     print()
 

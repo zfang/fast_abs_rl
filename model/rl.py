@@ -1,18 +1,19 @@
 import torch
 from torch import nn
-from torch.nn import init
 from torch.nn import functional as F
+from torch.nn import init
 
-from .rnn import MultiLayerLSTMCells
 from .extract import LSTMPointerNet
-
+from .rnn import MultiLayerLSTMCells
 
 INI = 1e-2
+
 
 # FIXME eccessing 'private members' of pointer net module is bad
 
 class PtrExtractorRL(nn.Module):
     """ works only on single sample in RL setting"""
+
     def __init__(self, ptr_net):
         super().__init__()
         assert isinstance(ptr_net, LSTMPointerNet)
@@ -44,7 +45,7 @@ class PtrExtractorRL(nn.Module):
             query = h[:, -1, :]
             for _ in range(self._n_hop):
                 query = PtrExtractorRL.attention(hop_feat, query,
-                                                self._hop_v, self._hop_wq)
+                                                 self._hop_v, self._hop_wq)
             score = PtrExtractorRL.attention_score(
                 attn_feat, query, self._attn_v, self._attn_wq)
             if self.training:
@@ -104,7 +105,7 @@ class PtrExtractorRLStop(PtrExtractorRL):
             query = h[:, -1, :]
             for _ in range(self._n_hop):
                 query = PtrExtractorRL.attention(hop_feat, query,
-                                                self._hop_v, self._hop_wq)
+                                                 self._hop_v, self._hop_wq)
             score = PtrExtractorRL.attention_score(
                 attn_feat, query, self._attn_v, self._attn_wq)
             for o in outputs:
@@ -130,6 +131,7 @@ class PtrExtractorRLStop(PtrExtractorRL):
 
 class PtrScorer(nn.Module):
     """ to be used as critic (predicts a scalar baseline reward)"""
+
     def __init__(self, ptr_net):
         super().__init__()
         assert isinstance(ptr_net, LSTMPointerNet)
@@ -183,6 +185,7 @@ class PtrScorer(nn.Module):
 
 class ActorCritic(nn.Module):
     """ shared encoder between actor/critic"""
+
     def __init__(self, sent_encoder, art_encoder,
                  extractor, art_batcher):
         super().__init__()
