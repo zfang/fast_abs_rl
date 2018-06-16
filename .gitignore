@@ -4,3 +4,4 @@ __pycache__/
 pretrained/
 .dataset/
 .output*/
+cnn-dailymail-word2vec/

@@ -166,7 +166,7 @@ def train(args):
         abs_ckpt['state_dict'] = load_best_ckpt(args.abs_dir)
         abs_vocab = pkl.load(open(join(args.abs_dir, 'vocab.pkl'), 'rb'))
         abs_dir = join(args.path, 'abstractor')
-        os.makedirs(join(abs_dir, 'ckpt'))
+        os.makedirs(join(abs_dir, 'ckpt'), exist_ok=True)
         with open(join(abs_dir, 'meta.json'), 'w') as f:
             json.dump(net_args['abstractor'], f, indent=4)
         torch.save(abs_ckpt, join(abs_dir, 'ckpt/ckpt-0-0'))

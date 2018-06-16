@@ -14,6 +14,8 @@ from metric import compute_rouge_l, compute_rouge_n
 from model.util import get_device
 from training import BasicPipeline
 
+SHIFT_REWARD_MEAN = False
+
 
 def a2c_validate(agent, abstractor, loader):
     agent.eval()
@@ -84,12 +86,14 @@ def a2c_train_step(agent, abstractor, loader, opt, grad_fn,
     indices = list(concat(indices))
     probs = list(concat(probs))
     baselines = list(concat(baselines))
-    # standardize rewards
     reward = torch.Tensor(rewards).to(get_device())
-    # scale without mean shift on reward
-    # reward = (reward - reward.mean()) / (
-    #    reward.std() + float(np.finfo(np.float32).eps))
-    reward = reward / (torch.max(reward) - torch.min(reward))
+    if SHIFT_REWARD_MEAN:
+        # standardize rewards
+        reward = (reward - reward.mean()) / (
+            reward.std() + float(np.finfo(np.float32).eps))
+    else:
+        # scale without mean shift on reward
+        reward = reward / (torch.max(reward) - torch.min(reward))
     baseline = torch.cat(baselines).squeeze()
     avg_advantage = 0
     losses = []
