@@ -5,3 +5,4 @@ pretrained/
 .dataset/
 .output*/
 cnn-dailymail-word2vec/
+meteor-1.5/
