@@ -6,3 +6,4 @@ pretrained/
 .output*/
 cnn-dailymail-word2vec/
 meteor-1.5/
+*.pl
