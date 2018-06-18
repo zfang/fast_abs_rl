@@ -43,7 +43,7 @@ def main(args):
     os.makedirs(save_dir, exist_ok=True)
 
     sentences = Sentences()
-    model = gensim.models.fasttext(
+    model = gensim.models.fasttext.FastText(
         size=args.dim, min_count=5, workers=16, sg=1)
     model.build_vocab(sentences)
     print('vocab built in {}'.format(timedelta(seconds=time() - start)))
