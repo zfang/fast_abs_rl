@@ -44,7 +44,7 @@ def main(args):
 
     sentences = Sentences()
     model = gensim.models.fasttext.FastText(
-        size=args.dim, min_count=5, workers=16, sg=1)
+        size=args.dim, min_count=5, workers=os.cpu_count() or 4, sg=1)
     model.build_vocab(sentences)
     print('vocab built in {}'.format(timedelta(seconds=time() - start)))
 
@@ -62,7 +62,7 @@ def main(args):
 
     model.save(join(save_dir, 'fasttext.{}d.{}k.bin'.format(
         args.dim, len(model.wv.vocab) // 1000)))
-    model.wv.save_fasttext_format(join(
+    model.wv.save_word2vec_format(join(
         save_dir,
         'fasttext.{}d.{}k.w2v'.format(args.dim, len(model.wv.vocab) // 1000)
     ))
