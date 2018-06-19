@@ -20,8 +20,8 @@ except KeyError:
 def eval_rouge(dec_pattern, dec_dir, ref_pattern, ref_dir,
                cmd='-c 95 -r 1000 -n 2 -m', system_id=1, force=False):
     """ evaluate by original Perl implementation"""
-    # silence pyrouge logging
     assert _ROUGE_PATH is not None
+    # silence pyrouge logging
     log.get_global_console_logger().setLevel(logging.WARNING)
     rouge_dec = join(dec_dir, '../rouge_dec')
     if not os.path.exists(rouge_dec) or force:
@@ -38,10 +38,10 @@ def eval_rouge(dec_pattern, dec_dir, ref_pattern, ref_dir,
             rouge_ref, ref_pattern,
             rouge_settings, system_id
         )
-        cmd = (join(_ROUGE_PATH, 'ROUGE-1.5.5.pl')
-               + ' -e {} '.format(join(_ROUGE_PATH, 'data'))
-               + cmd
-               + ' -a {}'.format(rouge_settings))
+    cmd = (join(_ROUGE_PATH, 'ROUGE-1.5.5.pl')
+           + ' -e {} '.format(join(_ROUGE_PATH, 'data'))
+           + cmd
+           + ' -a {}'.format(rouge_settings))
     output = sp.check_output(cmd.split(' '), universal_newlines=True)
     return output
 

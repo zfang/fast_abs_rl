@@ -6,4 +6,4 @@ pretrained/
 .output*/
 cnn-dailymail-*/
 meteor-1.5/
-*.pl
+src/
