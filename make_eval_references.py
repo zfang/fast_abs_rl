@@ -2,7 +2,7 @@
 import json
 import os
 from datetime import timedelta
-from os.path import join, exists
+from os.path import join
 from time import time
 
 from decoding import make_html_safe

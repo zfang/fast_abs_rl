@@ -20,7 +20,7 @@ from decoding import load_best_ckpt
 from metric import compute_rouge_l, compute_rouge_n
 from model.extract import PtrExtractSumm
 from model.rl import ActorCritic
-from rl import A2CPipeline
+from rl import A2CPipeline, set_shift_reward_mean
 from rl import get_grad_fn
 from training import BasicTrainer
 
@@ -138,8 +138,8 @@ def build_batchers(batch_size):
 
 
 def train(args):
-    if not exists(args.path):
-        os.makedirs(args.path)
+    os.makedirs(args.path, exist_ok=True)
+    set_shift_reward_mean(not args.no_reward_mean_shift)
 
     # make net
     if args.pretrained_dir:
@@ -244,6 +244,7 @@ if __name__ == '__main__':
                         help='patience for early stopping')
     parser.add_argument('--no-cuda', action='store_true',
                         help='disable GPU training')
+    parser.add_argument('--no-reward-mean-shift', action='store_true')
     args = parser.parse_args()
     args.cuda = torch.cuda.is_available() and not args.no_cuda
 

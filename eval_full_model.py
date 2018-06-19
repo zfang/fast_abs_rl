@@ -22,12 +22,12 @@ def main(args):
     if args.rouge:
         dec_pattern = r'(\d+).dec'
         ref_pattern = '#ID#.ref'
-        output = eval_rouge(dec_pattern, dec_dir, ref_pattern, ref_dir)
+        output = eval_rouge(dec_pattern, dec_dir, ref_pattern, ref_dir, force=args.force)
         metric = 'rouge'
     else:
         dec_pattern = '[0-9]+.dec'
         ref_pattern = '[0-9]+.ref'
-        output = eval_meteor(dec_pattern, dec_dir, ref_pattern, ref_dir)
+        output = eval_meteor(dec_pattern, dec_dir, ref_pattern, ref_dir, force=args.force)
         metric = 'meteor'
     print(output)
     with open(join(args.decode_dir, '{}.txt'.format(metric)), 'w') as f:
@@ -47,6 +47,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--decode_dir', action='store', required=True,
                         help='directory of decoded summaries')
+    parser.add_argument('-f', '--force', action='store_true')
 
     args = parser.parse_args()
     main(args)

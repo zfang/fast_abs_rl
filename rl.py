@@ -17,6 +17,11 @@ from training import BasicPipeline
 SHIFT_REWARD_MEAN = False
 
 
+def set_shift_reward_mean(val):
+    global SHIFT_REWARD_MEAN
+    SHIFT_REWARD_MEAN = val
+
+
 def a2c_validate(agent, abstractor, loader):
     agent.eval()
     start = time()
