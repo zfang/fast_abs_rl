@@ -23,7 +23,7 @@ def eval_rouge(dec_pattern, dec_dir, ref_pattern, ref_dir,
     # silence pyrouge logging
     assert _ROUGE_PATH is not None
     log.get_global_console_logger().setLevel(logging.WARNING)
-    rouge_dec = join(dec_dir, '../rouge/dec')
+    rouge_dec = join(dec_dir, '../rouge_dec')
     if not os.path.exists(rouge_dec) or force:
         Rouge155.convert_summaries_to_rouge_format(
             dec_dir, rouge_dec)
@@ -68,12 +68,12 @@ def eval_meteor(dec_pattern, dec_dir, ref_pattern, ref_dir, force=False):
         with open(join(file_dir, file_name)) as f:
             return ' '.join(f.read().split())
 
-    meteor_dec = join(dec_dir, 'meteor_dec.txt')
+    meteor_dec = join(dec_dir, '../meteor_dec.txt')
     if not os.path.exists(meteor_dec) or force:
         with open(meteor_dec, 'w') as dec_f:
             dec_f.write('\n'.join(map(read_file(dec_dir), decs)) + '\n')
 
-    meteor_ref = join(ref_dir, 'meteor_ref.txt')
+    meteor_ref = join(ref_dir, '../meteor_{}_ref.txt'.format(basename(normpath(ref_dir))))
     if not os.path.exists(meteor_ref) or force:
         with open(meteor_ref, 'w') as ref_f:
             ref_f.write('\n'.join(map(read_file(ref_dir), refs)) + '\n')
