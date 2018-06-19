@@ -9,7 +9,7 @@ from os.path import join
 import torch
 from cytoolz import curry
 
-from data.batcher import conver2id, pad_batch_tensorize
+from data.batcher import convert2id, pad_batch_tensorize
 from data.data import CnnDmDataset
 from model.copy_summ import CopySumm
 from model.extract import ExtractSumm, PtrExtractSumm
@@ -77,11 +77,11 @@ class Abstractor(object):
                 if not w in ext_word2id:
                     ext_word2id[w] = len(ext_word2id)
                     ext_id2word[len(ext_id2word)] = w
-        articles = conver2id(UNK, self._word2id, raw_article_sents)
+        articles = convert2id(UNK, self._word2id, raw_article_sents)
         art_lens = [len(art) for art in articles]
         article = pad_batch_tensorize(articles, PAD, cuda=False
                                       ).to(self._device)
-        extend_arts = conver2id(UNK, ext_word2id, raw_article_sents)
+        extend_arts = convert2id(UNK, ext_word2id, raw_article_sents)
         extend_art = pad_batch_tensorize(extend_arts, PAD, cuda=False
                                          ).to(self._device)
         extend_vsize = len(ext_word2id)
@@ -163,7 +163,7 @@ class Extractor(object):
     def __call__(self, raw_article_sents):
         self._net.eval()
         n_art = len(raw_article_sents)
-        articles = conver2id(UNK, self._word2id, raw_article_sents)
+        articles = convert2id(UNK, self._word2id, raw_article_sents)
         article = pad_batch_tensorize(articles, PAD, cuda=False
                                       ).to(self._device)
         indices = self._net.extract([article], k=min(n_art, self._max_ext))
@@ -177,7 +177,7 @@ class ArticleBatcher(object):
         self._device = torch.device('cuda' if cuda else 'cpu')
 
     def __call__(self, raw_article_sents):
-        articles = conver2id(UNK, self._word2id, raw_article_sents)
+        articles = convert2id(UNK, self._word2id, raw_article_sents)
         article = pad_batch_tensorize(articles, PAD, cuda=False
                                       ).to(self._device)
         return article

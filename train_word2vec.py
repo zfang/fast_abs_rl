@@ -44,7 +44,7 @@ def main(args):
 
     sentences = Sentences()
     model = gensim.models.Word2Vec(
-        size=args.dim, min_count=5, workers=os.cpu_count() or 4, sg=1)
+        size=args.dim, min_count=args.min_count, workers=os.cpu_count() or 4, sg=1)
     model.build_vocab(sentences)
     print('vocab built in {}'.format(timedelta(seconds=time() - start)))
 
@@ -76,6 +76,7 @@ if __name__ == '__main__':
     )
     parser.add_argument('--path', required=True, help='root of the model')
     parser.add_argument('--dim', action='store', type=int, default=128)
+    parser.add_argument('--min-count', action='store', type=int, default=5)
     parser.add_argument('--use-pretrained', action='store_true')
     args = parser.parse_args()
 
