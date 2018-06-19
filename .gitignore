@@ -4,6 +4,6 @@ __pycache__/
 pretrained/
 .dataset/
 .output*/
-cnn-dailymail-word2vec/
+cnn-dailymail-*/
 meteor-1.5/
 *.pl
