@@ -1,9 +1,7 @@
 torch==0.4.0
-torchtext==0.2.3
 gensim==3.4.0
 textacy==0.6.1
 tensorboardX
 cytoolz
 pyrouge
 lib/embeddings-0.0.8-py3-none-any.whl
--e git+git://github.com/OpenNMT/OpenNMT-py.git#egg=opennmt-py
