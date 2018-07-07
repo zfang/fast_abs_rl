@@ -4,18 +4,29 @@ import glob
 import json
 import os
 import string
+from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
+import spacy
 from scipy import stats
 from tqdm import tqdm
 
+from utils import POS_TAGS
+
+spacy_tagger = spacy.load('en_core_web_sm', disable=['ner', 'parser'])
+
+
+def json_load_file(**kwargs):
+    return json.load(open(**kwargs))
+
+
+def tokenize_data(d):
+    return [[t for t in sent.split() if t not in string.punctuation] for sent in d['article']]
+
 
 def get_data(data_dir):
-    def json_load_file(**kwargs):
-        return json.load(open(**kwargs))
-
-    with ThreadPoolExecutor(max_workers=4) as executor:
+    with ThreadPoolExecutor(max_workers=int((os.cpu_count() or 4) / 4)) as executor:
         futures = []
         for split in ('train', 'val', 'test'):
             split_dir = os.path.join(data_dir, split)
@@ -47,22 +58,36 @@ def get_stats(counts):
                 median=np.median(counts),
                 min=np.min(counts),
                 max=np.max(counts),
+                p1=np.percentile(counts, 1),
+                p5=np.percentile(counts, 5),
+                p10=np.percentile(counts, 10),
                 p90=np.percentile(counts, 90),
                 p95=np.percentile(counts, 95),
                 p99=np.percentile(counts, 99),
                 std=np.std(counts),
-                mode=dict(value=mode[0][0], count=mode[1][0]))
+                mode_value=mode[0][0],
+                mode_count=mode[1][0])
 
 
 def tokenize(data):
-    def func(d):
-        d['tokens'] = [[t for t in sent.split() if t not in string.punctuation] for sent in d['article']]
-
-    with ThreadPoolExecutor(max_workers=4) as executor:
-        futures = [executor.submit(func, d) for d in data]
+    with ThreadPoolExecutor(max_workers=int((os.cpu_count() or 4) / 4)) as executor:
+        futures = [executor.submit(tokenize_data, d) for d in data]
 
         for i in tqdm(range(len(futures))):
-            futures[i].result()
+            data[i]['tokens'] = futures[i].result()
+
+
+def get_pos_tags(data):
+    counter = Counter()
+    with tqdm(total=sum(len(d['article']) for d in data)) as pbar:
+        for doc in spacy_tagger.pipe((sent for d in data for sent in d['article']),
+                                     n_threads=os.cpu_count(),
+                                     batch_size=1024):
+            for token in doc:
+                counter[token.pos_] += 1
+
+            pbar.update(1)
+    return counter
 
 
 def main():
@@ -83,13 +108,35 @@ def main():
         ('tokens_per_sentence', get_token_per_sentence_count),
     ]
 
-    fieldnames = ['name', 'mean', 'median', 'min', 'max', 'p90', 'p95', 'p99', 'std', 'mode']
+    fieldnames = [
+        'name',
+        'mean',
+        'median',
+        'min',
+        'max',
+        'p1',
+        'p5',
+        'p10',
+        'p90',
+        'p95',
+        'p99',
+        'std',
+        'mode_value',
+        'mode_count',
+    ]
+
     with open(args.output_file, 'w', encoding='utf8') as out:
         csv_writer = csv.DictWriter(out, fieldnames)
         csv_writer.writeheader()
         for name, func in stats_mapping:
             print('Computing stats for {}...'.format(name))
             csv_writer.writerow({'name': name, **get_stats(func(data))})
+
+    with open(os.path.splitext(os.path.normpath(args.output_file))[0] + '-pos-tags.csv', 'w', encoding='utf8') as out:
+        csv_writer = csv.DictWriter(out, POS_TAGS)
+        csv_writer.writeheader()
+        print('Computing stats for {}...'.format('POS tags'))
+        csv_writer.writerow({**{t: 0 for t in POS_TAGS}, **get_pos_tags(data)})
 
 
 if __name__ == '__main__':

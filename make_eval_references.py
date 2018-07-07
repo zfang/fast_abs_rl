@@ -33,6 +33,8 @@ def dump(split):
 
 def main():
     for split in ['val', 'test']:  # evaluation of train data takes too long
+        if not os.path.exists(join(DATA_DIR, split)):
+            continue
         os.makedirs(join(DATA_DIR, 'refs', split), exist_ok=True)
         dump(split)
 

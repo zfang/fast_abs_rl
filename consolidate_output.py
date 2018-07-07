@@ -10,12 +10,11 @@ import numpy as np
 import spacy
 from textacy.text_stats import TextStats
 
-spacy_pipe = spacy.load('en_core_web_sm', disable=['parser', 'ner', 'tagger'])
-spacy_pipe.add_pipe(spacy_pipe.create_pipe('sentencizer'))
+spacy_parser = spacy.load('en_core_web_sm', disable=['ner', 'tagger'])
 
 
 def get_scores(texts: List[str]):
-    scores = [TextStats(doc).readability_stats for doc in spacy_pipe.pipe(texts, batch_size=1024)]
+    scores = [TextStats(doc).readability_stats for doc in spacy_parser.pipe(texts, batch_size=1024)]
     scores = list(filter(None, scores))
 
     return {

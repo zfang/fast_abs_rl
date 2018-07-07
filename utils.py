@@ -7,6 +7,11 @@ import gensim
 import torch
 from torch import nn
 
+PAD = 0
+UNK = 1
+START = 2
+END = 3
+
 
 def count_data(path):
     """ count number of data in the given path"""
@@ -16,19 +21,14 @@ def count_data(path):
     return n_data
 
 
-PAD = 0
-UNK = 1
-START = 2
-END = 3
-
-
 def make_vocab(wc, vocab_size):
-    word2id, id2word = {}, {}
-    word2id['<pad>'] = PAD
-    word2id['<unk>'] = UNK
-    word2id['<start>'] = START
-    word2id['<end>'] = END
-    for i, (w, _) in enumerate(wc.most_common(vocab_size), 4):
+    word2id = {
+        '<pad>': PAD,
+        '<unk>': UNK,
+        '<start>': START,
+        '<end>': END,
+    }
+    for i, (w, _) in enumerate(wc.most_common(vocab_size), len(word2id)):
         word2id[w] = i
     return word2id
 
