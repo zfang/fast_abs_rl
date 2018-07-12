@@ -21,7 +21,10 @@ dm_double_close_quote = '\u201d'
 # acceptable ways to end a sentence
 END_TOKENS = set(list(string.punctuation) + ['...', dm_single_close_quote, dm_double_close_quote])
 
-spacy_parser = spacy.load('en_core_web_sm', diable=['ner'])
+SPACY_TAGGER = spacy.load('en_core_web_sm', diable=['ner', 'parser'])
+SPACY = spacy.load('en_core_web_sm', diable=['ner', 'tagger', 'parser'])
+
+LOGGER = logging.getLogger(__name__)
 
 
 def fix_missing_period(line):
@@ -85,7 +88,8 @@ def maximal_marginal_relevance_sorted(docs, lambda_, relevance_scores, similarit
                 score -= (1 - lambda_) * max([similarity_matrix[x, y] for y in selected.keys()] or [0])
             return score
 
-        next_selected = remaining[np.argmax(map(mmr_score, remaining))]
+        scores = list(map(mmr_score, remaining))
+        next_selected = remaining[np.argmax(scores)]
         selected[next_selected] = True
 
     return np.asarray(docs)[list(selected.keys())].tolist()
@@ -102,53 +106,64 @@ def preprocess(texts,
 
     found_sentences = set()
 
-    sentences = []
+    docs = []
     lemmas = []
     scores = []
-    for doc, score in zip(spacy_parser.pipe(map(clean_text, texts), n_threads=os.cpu_count(), batch_size=10000),
+
+    min_threshold = token_threshold
+    max_threshold = 15 * token_threshold
+
+    pos_tagging = pos_tag_distribution is not None and pos_tag_chisq_critical_value > 0
+    if pos_tagging:
+        parser = SPACY_TAGGER
+    else:
+        parser = SPACY
+
+    for doc, score in zip(parser.pipe(map(clean_text, texts), n_threads=os.cpu_count(), batch_size=10000),
                           relevance_scores):
-        for sent in doc.sents:
-            if sent.text in found_sentences:
-                log_removed(sent.text, 'duplicate')
+        if doc.text in found_sentences:
+            log_removed(doc.text, 'duplicate')
+            continue
+        found_sentences.add(doc.text)
+
+        if not (min_threshold <= len(doc) <= max_threshold):
+            log_removed(doc.text, 'token count {} is out of range [{}, {}]'.format(
+                len(doc),
+                min_threshold,
+                max_threshold))
+            continue
+
+        if contains_personal_info(doc.text):
+            log_removed(doc.text, 'personal info')
+            continue
+
+        if pos_tagging:
+            tag_obs = Counter()
+            for token in doc:
+                tag_obs[token.pos_] += 1
+            total = sum(tag_obs.values())
+            tag_exp = {tag: pos_tag_distribution[tag] * total for tag in POS_TAGS}
+            _, p = compute_pos_tag_chisquare(tag_obs, tag_exp)
+            if p < pos_tag_chisq_critical_value:
+                log_removed(doc.text, 'POS tag p value {} < {}'.format(p, pos_tag_chisq_critical_value))
                 continue
-            found_sentences.add(sent.text)
 
-            if contains_personal_info(sent.text):
-                log_removed(sent.text, 'personal info')
-                continue
+        raw_tokens = list(filter(lambda t: bool(t.text.strip()), doc))
+        tokens = [token.text for token in raw_tokens]
+        tokens = fix_missing_period(tokens)
 
-            raw_tokens = list(filter(lambda t: bool(t.text.strip()), sent))
-            tokens = [token.text for token in raw_tokens]
-            token_count = sum(1 for token in tokens if token not in END_TOKENS)
-            if token_count < token_threshold:
-                log_removed(sent.text, 'token count {} < {}'.format(token_count, token_threshold))
-                continue
+        docs.append(tokens)
+        lemmas.append([token.lemma_ for token in doc])
+        scores.append(score)
 
-            if pos_tag_distribution is not None and pos_tag_chisq_critical_value > 0:
-                tag_obs = Counter()
-                for token in sent:
-                    tag_obs[token.pos_] += 1
-                total = sum(tag_obs.values())
-                tag_exp = {tag: pos_tag_distribution[tag] * total for tag in POS_TAGS}
-                _, p = compute_pos_tag_chisquare(tag_obs, tag_exp)
-                if p < pos_tag_chisq_critical_value:
-                    log_removed(sent.text, 'POS tag p value {} < {}'.format(p, pos_tag_chisq_critical_value))
-                    continue
-
-            tokens = fix_missing_period(tokens)
-
-            sentences.append(tokens)
-            lemmas.append([token.lemma_ for token in sent])
-            scores.append(score)
-
-    if not sentences:
-        return sentences
+    if not docs:
+        return docs
 
     sif_embeddings = get_sif_embeddings(lemmas)
     normalized_sif_embeddings = normalize(sif_embeddings, axis=1)
     similarity_matrix = np.dot(normalized_sif_embeddings, np.transpose(normalized_sif_embeddings))
     mmr_sorted = maximal_marginal_relevance_sorted(
-        docs=sentences,
+        docs=docs,
         lambda_=lambda_,
         relevance_scores=scores,
         similarity_matrix=similarity_matrix,
@@ -158,4 +173,4 @@ def preprocess(texts,
 
 
 def log_removed(sentence, reason):
-    logging.getLogger(__name__).debug(json.dumps({'removed': sentence, 'reason': reason}, ensure_ascii=False))
+    LOGGER.debug(json.dumps({'removed': sentence, 'reason': reason}, ensure_ascii=False))
