@@ -109,7 +109,7 @@ def preprocess(texts,
                           relevance_scores):
         for sent in doc.sents:
             if sent.text in found_sentences:
-                log_removed(sent.text, 'duplicate'.format(token_count, token_threshold))
+                log_removed(sent.text, 'duplicate')
                 continue
             found_sentences.add(sent.text)
 
