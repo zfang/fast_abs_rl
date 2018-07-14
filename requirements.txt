@@ -4,4 +4,5 @@ textacy==0.6.1
 tensorboardX
 cytoolz
 pyrouge
+wordfreq
 lib/embeddings-0.0.8-py3-none-any.whl

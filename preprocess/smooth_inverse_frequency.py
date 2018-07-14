@@ -1,11 +1,12 @@
 import operator
 import os
 from collections import defaultdict
-from functools import partial, lru_cache
+from functools import partial
 
 import numpy as np
 from embeddings import GloveEmbedding
 from sklearn.decomposition import TruncatedSVD
+from wordfreq import word_frequency
 
 PAD = 0
 UNK = 1
@@ -70,21 +71,9 @@ def SIF_embedding(We, x, w, rmpc=1):
     return emb
 
 
-@lru_cache(maxsize=4)
-def get_word_weights(weight_file, a=1e-3):
+def get_word_weights(words, a=1e-3):
     a = min(a, 1)
-
-    word2weight = {}
-    with open(weight_file, 'r', encoding='utf8') as f:
-        for line in f:
-            tokens = line.strip().split()
-            if len(tokens) != 2:
-                continue
-            word2weight[tokens[0]] = float(tokens[1])
-
-    total = sum(word2weight.values())
-
-    return defaultdict(lambda: 1.0, {word: a / (a + value / total) for word, value in word2weight.items()})
+    return {word: a / (a + word_frequency(word, 'en')) for word in words}
 
 
 def random_word_emb(dim):
@@ -127,7 +116,7 @@ def prepare_data(list_of_seqs, dtype='float32'):
 
 def get_sif_embeddings(sentences):
     word2id, id2word, word_emb = get_word_embeddings(sentences)
-    word_weights = get_word_weights(WEIGHT_FILE)
+    word_weights = get_word_weights(word2id.keys())
     x, _ = prepare_data(np.asarray([[word2id[word] for word in sent] for sent in sentences]), dtype='int32')
     w, _ = prepare_data(np.asarray([[word_weights[word] for word in sent] for sent in sentences]), dtype='float32')
     return SIF_embedding(We=word_emb, x=x, w=w)
