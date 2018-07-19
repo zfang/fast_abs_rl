@@ -21,7 +21,7 @@ from model.extract import ExtractSumm, PtrExtractSumm
 from model.util import sequence_loss
 from training import BasicPipeline, BasicTrainer
 from training import get_basic_grad_fn, basic_validate
-from utils import PAD, UNK
+from utils import PAD, UNK, ELMO, make_elmo_embedding
 from utils import make_vocab, make_embedding
 
 BUCKET_SIZE = 6400
@@ -139,7 +139,11 @@ def main(args):
         # NOTE: the pretrained embedding having the same dimension
         #       as args.emb_dim should already be trained
         embedding, _ = make_embedding(
-            {i: w for w, i in word2id.items()}, args.w2v)
+            {i: w for w, i in word2id.items()}, args.w2v, augment_elmo=args.elmo)
+        net.set_embedding(embedding)
+    elif args.elmo:
+        embedding = make_elmo_embedding(
+            {i: w for w, i in word2id.items()})
         net.set_embedding(embedding)
 
     # configure training setting
@@ -231,8 +235,15 @@ if __name__ == '__main__':
                         help='run in debugging mode')
     parser.add_argument('--no-cuda', action='store_true',
                         help='disable GPU training')
+    parser.add_argument('--elmo', action='store_true',
+                        help='augment embedding with elmo')
     args = parser.parse_args()
     args.bi = not args.no_bi
     args.cuda = torch.cuda.is_available() and not args.no_cuda
+    if args.elmo:
+        if args.w2v:
+            args.emb_dim += ELMO.get_output_dim()
+        else:
+            args.emb_dim = ELMO.get_output_dim()
 
     main(args)

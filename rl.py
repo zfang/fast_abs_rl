@@ -10,6 +10,8 @@ from torch import autograd
 from torch.nn import functional as F
 from torch.nn.utils import clip_grad_norm_
 
+from decode_full_model import rerank
+from decoding import BeamAbstractor
 from metric import compute_rouge_l, compute_rouge_n
 from model.util import get_device
 from training import BasicPipeline
@@ -38,6 +40,8 @@ def a2c_validate(agent, abstractor, loader):
                 ext_sents += [raw_arts[idx.item()]
                               for idx in indices if idx.item() < len(raw_arts)]
             all_summs = abstractor(ext_sents)
+            if isinstance(abstractor, BeamAbstractor):
+                all_summs = rerank(all_summs, ext_inds)
             for (j, n), abs_sents in zip(ext_inds, abs_batch):
                 summs = all_summs[j:j + n]
                 # python ROUGE-1 (not official evaluation)
@@ -68,6 +72,8 @@ def a2c_train_step(agent, abstractor, loader, opt, grad_fn,
                       for idx in inds if idx.item() < len(raw_arts)]
     with torch.no_grad():
         summaries = abstractor(ext_sents)
+        if isinstance(abstractor, BeamAbstractor):
+            summaries = rerank(summaries, [(0, len(ext_sents))])
     i = 0
     rewards = []
     avg_reward = 0

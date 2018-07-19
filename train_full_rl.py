@@ -15,7 +15,7 @@ from torch.utils.data import DataLoader
 
 from data.batcher import tokenize
 from data.data import CnnDmDataset
-from decoding import Abstractor, RLExtractor, ArticleBatcher
+from decoding import Abstractor, RLExtractor, ArticleBatcher, BeamAbstractor
 from decoding import load_best_ckpt
 from metric import compute_rouge_l, compute_rouge_n
 from model.extract import PtrExtractSumm
@@ -56,10 +56,13 @@ def load_ext_net(ext_dir):
     return ext, vocab
 
 
-def configure_pretrained_net(pretrained_dir, cuda):
+def configure_pretrained_net(pretrained_dir, cuda, beam_search):
     """ load pretrained sub-modules and build the actor-critic network"""
     abs_dir = os.path.join(pretrained_dir, 'abstractor/')
-    abstractor = Abstractor(abs_dir, MAX_ABS_LEN, cuda)
+    if beam_search:
+        abstractor = BeamAbstractor(abs_dir, MAX_ABS_LEN, cuda)
+    else:
+        abstractor = Abstractor(abs_dir, MAX_ABS_LEN, cuda)
 
     ext_dir = pretrained_dir
     extractor = RLExtractor(pretrained_dir, cuda=cuda)
@@ -74,11 +77,14 @@ def configure_pretrained_net(pretrained_dir, cuda):
     return agent, agent_vocab, abstractor, net_args
 
 
-def configure_net(abs_dir, ext_dir, cuda):
+def configure_net(abs_dir, ext_dir, cuda, beam_search):
     """ load pretrained sub-modules and build the actor-critic network"""
     # load pretrained abstractor model
     if abs_dir is not None:
-        abstractor = Abstractor(abs_dir, MAX_ABS_LEN, cuda)
+        if beam_search:
+            abstractor = BeamAbstractor(abs_dir, MAX_ABS_LEN, cuda)
+        else:
+            abstractor = Abstractor(abs_dir, MAX_ABS_LEN, cuda)
     else:
         abstractor = identity
 
@@ -144,10 +150,10 @@ def train(args):
     # make net
     if args.pretrained_dir:
         agent, agent_vocab, abstractor, net_args = configure_pretrained_net(
-            args.pretrained_dir, args.cuda)
+            args.pretrained_dir, args.cuda, args.beam_search)
     else:
         agent, agent_vocab, abstractor, net_args = configure_net(
-            args.abs_dir, args.ext_dir, args.cuda)
+            args.abs_dir, args.ext_dir, args.cuda, args.beam_search)
 
     # configure training setting
     assert args.stop > 0
@@ -244,7 +250,10 @@ if __name__ == '__main__':
                         help='patience for early stopping')
     parser.add_argument('--no-cuda', action='store_true',
                         help='disable GPU training')
-    parser.add_argument('--no-reward-mean-shift', action='store_true')
+    parser.add_argument('--no-reward-mean-shift', action='store_true',
+                        help='use min-max scaling instead of normalization on reward')
+    parser.add_argument('--beam-search', action='store_true',
+                        help='use beam search on abstractor')
     args = parser.parse_args()
     args.cuda = torch.cuda.is_available() and not args.no_cuda
 

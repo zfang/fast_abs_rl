@@ -20,7 +20,7 @@ from model.copy_summ import CopySumm
 from model.util import sequence_loss
 from training import BasicPipeline, BasicTrainer
 from training import get_basic_grad_fn, basic_validate
-from utils import PAD, UNK, START, END
+from utils import PAD, UNK, START, END, ELMO, make_elmo_embedding
 from utils import make_vocab, make_embedding
 
 # NOTE: bucket size too large may sacrifice randomness,
@@ -50,13 +50,14 @@ class MatchDataset(CnnDmDataset):
 
 
 def configure_net(vocab_size, emb_dim,
-                  n_hidden, bidirectional, n_layer):
+                  n_hidden, bidirectional, n_layer, dropout):
     net_args = {}
     net_args['vocab_size'] = vocab_size
     net_args['emb_dim'] = emb_dim
     net_args['n_hidden'] = n_hidden
     net_args['bidirectional'] = bidirectional
     net_args['n_layer'] = n_layer
+    net_args['dropout'] = dropout
 
     net = CopySumm(**net_args)
     return net, net_args
@@ -123,13 +124,21 @@ def main(args):
                                                 args.cuda, args.debug)
 
     # make net
-    net, net_args = configure_net(len(word2id), args.emb_dim,
-                                  args.n_hidden, args.bi, args.n_layer)
+    net, net_args = configure_net(len(word2id),
+                                  args.emb_dim,
+                                  args.n_hidden,
+                                  args.bi,
+                                  args.n_layer,
+                                  args.dropout)
     if args.w2v:
         # NOTE: the pretrained embedding having the same dimension
         #       as args.emb_dim should already be trained
         embedding, _ = make_embedding(
-            {i: w for w, i in word2id.items()}, args.w2v)
+            {i: w for w, i in word2id.items()}, args.w2v, augment_elmo=args.elmo)
+        net.set_embedding(embedding)
+    elif args.elmo:
+        embedding = make_elmo_embedding(
+            {i: w for w, i in word2id.items()})
         net.set_embedding(embedding)
 
     # configure training setting
@@ -205,6 +214,8 @@ if __name__ == '__main__':
                         help='gradient clipping')
     parser.add_argument('--batch', type=int, action='store', default=32,
                         help='the training batch size')
+    parser.add_argument('--dropout', type=float, default=0,
+                        help='the probability for dropout')
     parser.add_argument(
         '--ckpt_freq', type=int, action='store', default=3000,
         help='number of update steps for checkpoint and validation'
@@ -216,8 +227,15 @@ if __name__ == '__main__':
                         help='run in debugging mode')
     parser.add_argument('--no-cuda', action='store_true',
                         help='disable GPU training')
+    parser.add_argument('--elmo', action='store_true',
+                        help='augment embedding with elmo')
     args = parser.parse_args()
     args.bi = not args.no_bi
     args.cuda = torch.cuda.is_available() and not args.no_cuda
+    if args.elmo:
+        if args.w2v:
+            args.emb_dim += ELMO.get_output_dim()
+        else:
+            args.emb_dim = ELMO.get_output_dim()
 
     main(args)
