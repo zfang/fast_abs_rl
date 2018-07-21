@@ -139,6 +139,10 @@ def decode(args, split):
     dataset = CnnDmDataset(split, DATA_DIR)
     print('Generating abstracts for {} dataset'.format(split))
     for i in tqdm(range(len(dataset))):
+        file_path = join(decode_path, '{}.dec'.format(i))
+        if not args.force and os.path.exists(file_path):
+            continue
+
         js_data = dataset[i]
         art_sents, extracts = (js_data['article'], js_data['extracted'])
 
@@ -147,7 +151,7 @@ def decode(args, split):
         else:
             abs_results = abstract_callback(args, tokenize(None, (art_sents[i] for i in extracts)))
 
-        with open(join(decode_path, '{}.dec'.format(i)), 'w', encoding='utf8') as f:
+        with open(file_path, 'w', encoding='utf8') as f:
             f.write('\n'.join(abs_results))
 
 
@@ -255,10 +259,13 @@ if __name__ == '__main__':
         help='number of update steps for checkpoint and validation'
     )
 
+    parser.add_argument('--force', action='store_true')
     parser.add_argument('--debug', action='store_true',
                         help='run in debugging mode')
     parser.add_argument('--no-cuda', action='store_true',
                         help='disable GPU training')
+    parser.add_argument('--beam-search', action='store_true',
+                        help='use beam-search')
     parser.add_argument('--elmo', action='store_true',
                         help='augment embedding with elmo')
     parser.add_argument('--elmo-dropout', type=float, default=0,
