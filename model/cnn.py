@@ -36,3 +36,6 @@ class ConvNet(nn.Module):
         """embedding is the weight matrix"""
         assert self._embedding.weight.size() == embedding.size()
         self._embedding.weight.data.copy_(embedding)
+
+    def set_elmo_embedding(self, embedding):
+        self._embedding = embedding

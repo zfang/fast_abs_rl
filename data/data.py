@@ -18,8 +18,7 @@ class CnnDmDataset(Dataset):
 
     def __getitem__(self, i: int):
         with open(join(self._data_path, '{}.json'.format(i))) as f:
-            js = json.loads(f.read())
-        return js
+            return json.load(f)
 
 
 def _count_data(path):

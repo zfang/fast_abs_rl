@@ -1,23 +1,24 @@
 import argparse
 import os
 from functools import lru_cache
+from os.path import join
 
-import copy
 import torch
 from cytoolz import compose, curry, concat
 from toolz.sandbox import unzip
 from torch.nn import functional as F
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
-from data.batcher import tokenize, BucketedGenerater, pad_batch_tensorize, coll_fn_extract, \
-    convert_batch_extract_ptr, prepro_fn_extract
+from data.batcher import BucketedGenerater, pad_batch_tensorize, coll_fn_extract, \
+    convert_batch_extract_ptr, prepro_fn_extract, tokenize
 from data.data import CnnDmDataset
 from decode_full_model import rerank
 from decoding import Abstractor, BeamAbstractor
 from model.cnn import ConvNet
 from training import BasicPipeline, BasicTrainer, basic_validate, get_basic_grad_fn
-from utils import UNK, PAD
+from utils import UNK, PAD, get_elmo
 
 BUCKET_SIZE = 6400
 MAX_ABS_LEN = 30
@@ -55,9 +56,9 @@ class MatchDataset(CnnDmDataset):
     (dataset created by greedily matching ROUGE)
     """
 
-    def __init__(self, split, abstract_callback, args):
+    def __init__(self, split, abs_results_path):
         super().__init__(split, DATA_DIR)
-        self._abstract_callback = abstract_callback(args)
+        self._abs_results_path = abs_results_path
 
     def __getitem__(self, i):
         js_data = super().__getitem__(i)
@@ -68,7 +69,8 @@ class MatchDataset(CnnDmDataset):
             return [], []
 
         abs_sents = abs_sents[:len(extracts)]
-        abs_results = self._abstract_callback(tokenize(None, (art_sents[i] for i in extracts)))
+        with open(join(self._abs_results_path, '{}.dec'.format(i)), 'r', encoding='utf8') as f:
+            abs_results = f.read().splitlines()
 
         texts = abs_sents + abs_results
         labels = [HUMAN] * len(abs_sents) + [MACHINE] * len(abs_results)
@@ -89,6 +91,7 @@ def batchify_fn(pad, data, cuda=True):
 
 
 def build_batchers(args, word2id):
+    decode_path = join(args.path, 'abs_decode')
     prepro = prepro_fn_extract(None, None)
 
     def sort_key(sample):
@@ -99,7 +102,7 @@ def build_batchers(args, word2id):
                        convert_batch_extract_ptr(UNK, word2id))
 
     train_loader = DataLoader(
-        MatchDataset('train', abstract_callback, args),
+        MatchDataset('train', decode_path),
         batch_size=BUCKET_SIZE,
         shuffle=not args.debug,
         num_workers=4 if args.cuda and not args.debug else 0,
@@ -113,7 +116,7 @@ def build_batchers(args, word2id):
                                       fork=not args.debug)
 
     val_loader = DataLoader(
-        MatchDataset('val', abstract_callback, args),
+        MatchDataset('val', decode_path),
         batch_size=BUCKET_SIZE,
         shuffle=False,
         num_workers=4 if args.cuda and not args.debug else 0,
@@ -129,10 +132,40 @@ def build_batchers(args, word2id):
     return train_batcher, val_batcher
 
 
+def decode(args, split):
+    decode_path = join(args.path, 'abs_decode')
+    os.makedirs(decode_path, exist_ok=True)
+
+    dataset = CnnDmDataset(split, DATA_DIR)
+    print('Generating abstracts for {} dataset'.format(split))
+    for i in tqdm(range(len(dataset))):
+        js_data = dataset[i]
+        art_sents, extracts = (js_data['article'], js_data['extracted'])
+
+        if not extracts:
+            abs_results = []
+        else:
+            abs_results = abstract_callback(args, tokenize(None, (art_sents[i] for i in extracts)))
+
+        with open(join(decode_path, '{}.dec'.format(i)), 'w', encoding='utf8') as f:
+            f.write('\n'.join(abs_results))
+
+
 def main(args):
     abstractor = get_abstractor(args.abs_dir, args.beam_search, args.cuda)
+    for split in ('train', 'val'):
+        decode(args, split)
 
     embedding = abstractor._net._decoder._embedding
+    word2id = abstractor._word2id
+    id2words = {i: w for w, i in word2id.items()}
+
+    elmo = None
+    if args.elmo:
+        elmo = get_elmo(dropout=args.elmo_dropout,
+                        vocab_to_cache=[id2words[i] for i in range(len(id2words))],
+                        cuda=args.cuda)
+        args.emb_dim = elmo.get_output_dim()
 
     meta = {
         'net': '{}_discriminator'.format('cnn'),
@@ -156,16 +189,19 @@ def main(args):
 
     net = ConvNet(**meta['net_args'])
 
-    net.set_embedding(embedding.weight)
+    if elmo:
+        net.set_elmo_embedding(elmo)
+    else:
+        net.set_embedding(embedding.weight)
 
-    train_batcher, val_batcher = build_batchers(args, abstractor._word2id)
+    train_batcher, val_batcher = build_batchers(args, word2id)
 
     def criterion(logit, target):
         return F.cross_entropy(logit, target, reduce=False)
 
     val_fn = basic_validate(net, criterion)
     grad_fn = get_basic_grad_fn(net, args.clip)
-    optimizer = torch.optim.Adam(net.parameters(), lr=args.lr)
+    optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), lr=args.lr)
     scheduler = ReduceLROnPlateau(optimizer, 'min', verbose=True,
                                   factor=args.decay, min_lr=0,
                                   patience=args.lr_p)
@@ -223,8 +259,10 @@ if __name__ == '__main__':
                         help='run in debugging mode')
     parser.add_argument('--no-cuda', action='store_true',
                         help='disable GPU training')
-    parser.add_argument('--beam-search', action='store_true',
-                        help='use beam search on abstractor')
+    parser.add_argument('--elmo', action='store_true',
+                        help='augment embedding with elmo')
+    parser.add_argument('--elmo-dropout', type=float, default=0,
+                        help='the probability for elmo dropout')
     args = parser.parse_args()
     args.cuda = torch.cuda.is_available() and not args.no_cuda
 

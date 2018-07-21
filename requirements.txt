@@ -5,4 +5,5 @@ tensorboardX
 cytoolz
 pyrouge
 wordfreq
+allennlp
 lib/embeddings-0.0.8-py3-none-any.whl

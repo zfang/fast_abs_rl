@@ -170,6 +170,10 @@ class CopySumm(Seq2SeqSumm):
                     outputs[i] = (f + b)[:beam_size]
         return outputs
 
+    def set_elmo_embedding(self, embedding):
+        self._embedding = embedding
+        self._decoder._embedding = embedding
+
 
 class CopyLSTMDecoder(AttentionalLSTMDecoder):
     def __init__(self, copy, *args, **kwargs):

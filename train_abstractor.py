@@ -3,6 +3,7 @@ import argparse
 import json
 import os
 import pickle as pkl
+from collections import OrderedDict
 from os.path import join, exists
 
 import torch
@@ -20,7 +21,7 @@ from model.copy_summ import CopySumm
 from model.util import sequence_loss
 from training import BasicPipeline, BasicTrainer
 from training import get_basic_grad_fn, basic_validate
-from utils import PAD, UNK, START, END, ELMO, make_elmo_embedding
+from utils import PAD, UNK, START, END, get_elmo
 from utils import make_vocab, make_embedding
 
 # NOTE: bucket size too large may sacrifice randomness,
@@ -117,11 +118,23 @@ def build_batchers(word2id, cuda, debug):
 def main(args):
     # create data batcher, vocabulary
     # batcher
+
+
     with open(join(DATA_DIR, 'vocab_cnt.pkl'), 'rb') as f:
         wc = pkl.load(f)
     word2id = make_vocab(wc, args.vsize)
+    id2words = {i: w for w, i in word2id.items()}
+
+    elmo = None
+    if args.elmo:
+        elmo = get_elmo(dropout=args.elmo_dropout,
+                        vocab_to_cache=[id2words[i] for i in range(len(id2words))],
+                        cuda=args.cuda)
+        args.emb_dim = elmo.get_output_dim()
+
     train_batcher, val_batcher = build_batchers(word2id,
-                                                args.cuda, args.debug)
+                                                args.cuda,
+                                                args.debug)
 
     # make net
     net, net_args = configure_net(len(word2id),
@@ -130,15 +143,14 @@ def main(args):
                                   args.bi,
                                   args.n_layer,
                                   args.dropout)
-    if args.w2v:
+
+    if elmo:
+        net.set_elmo_embedding(elmo)
+    elif args.w2v:
         # NOTE: the pretrained embedding having the same dimension
         #       as args.emb_dim should already be trained
         embedding, _ = make_embedding(
-            {i: w for w, i in word2id.items()}, args.w2v, augment_elmo=args.elmo)
-        net.set_embedding(embedding)
-    elif args.elmo:
-        embedding = make_elmo_embedding(
-            {i: w for w, i in word2id.items()})
+            id2words, args.w2v)
         net.set_embedding(embedding)
 
     # configure training setting
@@ -161,7 +173,7 @@ def main(args):
     # prepare trainer
     val_fn = basic_validate(net, criterion)
     grad_fn = get_basic_grad_fn(net, args.clip)
-    optimizer = optim.Adam(net.parameters(), **train_params['optimizer'][1])
+    optimizer = optim.Adam(filter(lambda p: p.requires_grad, net.parameters()), **train_params['optimizer'][1])
     scheduler = ReduceLROnPlateau(optimizer, 'min', verbose=True,
                                   factor=args.decay, min_lr=0,
                                   patience=args.lr_p)
@@ -229,13 +241,10 @@ if __name__ == '__main__':
                         help='disable GPU training')
     parser.add_argument('--elmo', action='store_true',
                         help='augment embedding with elmo')
+    parser.add_argument('--elmo-dropout', type=float, default=0,
+                        help='the probability for elmo dropout')
     args = parser.parse_args()
     args.bi = not args.no_bi
     args.cuda = torch.cuda.is_available() and not args.no_cuda
-    if args.elmo:
-        if args.w2v:
-            args.emb_dim += ELMO.get_output_dim()
-        else:
-            args.emb_dim = ELMO.get_output_dim()
 
     main(args)
