@@ -248,8 +248,8 @@ if __name__ == '__main__':
                         help='disable GPU training')
     parser.add_argument('--elmo', action='store_true',
                         help='augment embedding with elmo')
-    parser.add_argument('--elmo-dropout', action='store_true',
-                        help='augment embedding with elmo')
+    parser.add_argument('--elmo-dropout', type=float, default=0,
+                        help='the probability for elmo dropout')
     args = parser.parse_args()
     args.bi = not args.no_bi
     args.cuda = torch.cuda.is_available() and not args.no_cuda
