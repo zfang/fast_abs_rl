@@ -4,7 +4,8 @@ import json
 import os
 import pickle as pkl
 from itertools import cycle
-from os.path import join, exists
+from operator import itemgetter
+from os.path import join
 
 import torch
 from cytoolz import identity
@@ -23,6 +24,7 @@ from model.rl import ActorCritic
 from rl import A2CPipeline, set_shift_reward_mean
 from rl import get_grad_fn
 from training import BasicTrainer
+from utils import get_elmo
 
 MAX_ABS_LEN = 30
 
@@ -52,6 +54,10 @@ def load_ext_net(ext_dir):
     ext_args = ext_meta['net_args']
     vocab = pkl.load(open(join(ext_dir, 'vocab.pkl'), 'rb'))
     ext = PtrExtractSumm(**ext_args)
+    if ext_args.get('embedding') == 'elmo':
+        vocab_to_cache = [w for w, i in sorted(list(vocab.items()), key=itemgetter(1))]
+        ext.set_elmo_embedding(get_elmo(dropout=ext_args.get('elmo_dropout', 0),
+                                        vocab_to_cache=vocab_to_cache))
     ext.load_state_dict(ext_ckpt)
     return ext, vocab
 

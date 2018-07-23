@@ -149,6 +149,8 @@ def main(args):
                                   args.lstm_hidden, args.lstm_layer, args.bi)
 
     if elmo:
+        net_args['embedding'] = 'elmo'
+        net_args['elmo_dropout'] = args.elmo_dropout
         net.set_elmo_embedding(elmo)
     elif args.w2v:
         # NOTE: the pretrained embedding having the same dimension

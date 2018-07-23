@@ -4,6 +4,7 @@ import os
 import pickle as pkl
 import re
 from itertools import starmap
+from operator import itemgetter
 from os.path import join
 
 import torch
@@ -14,7 +15,7 @@ from data.data import CnnDmDataset
 from model.copy_summ import CopySumm
 from model.extract import ExtractSumm, PtrExtractSumm
 from model.rl import ActorCritic
-from utils import PAD, UNK, START, END
+from utils import PAD, UNK, START, END, get_elmo
 
 try:
     DATASET_DIR = os.environ['DATA']
@@ -62,6 +63,11 @@ class Abstractor(object):
         abs_ckpt = load_best_ckpt(abs_dir)
         word2id = pkl.load(open(join(abs_dir, 'vocab.pkl'), 'rb'))
         abstractor = CopySumm(**abs_args)
+        if abs_args.get('embedding') == 'elmo':
+            vocab_to_cache = [w for w, i in sorted(list(word2id.items()), key=itemgetter(1))]
+            abstractor.set_elmo_embedding(get_elmo(dropout=abs_args.get('elmo_dropout', 0),
+                                                   vocab_to_cache=vocab_to_cache,
+                                                   cuda=cuda))
         abstractor.load_state_dict(abs_ckpt)
         self._device = torch.device('cuda' if cuda else 'cpu')
         self._net = abstractor.to(self._device)
