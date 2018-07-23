@@ -28,8 +28,9 @@ class ElmoWordEmbedding(torch.nn.Module):
                                        vocab_to_cache=vocab_to_cache)
 
         # self.weight is used to compute probabilities
-        word_embedding_weight = self._elmo._elmo._elmo_lstm._word_embedding.weight
-        self.weight: torch.nn.Parameter = torch.cat((word_embedding_weight, word_embedding_weight), dim=1)
+        word_embedding: torch.nn.spar = self._elmo._elmo._elmo_lstm._word_embedding
+        self.weight: torch.nn.Parameter = torch.cat((word_embedding.weight, word_embedding.weight), dim=1)
+        self.num_embeddings = word_embedding.num_embeddings
 
     def get_output_dim(self):
         return self._elmo.get_output_dim()

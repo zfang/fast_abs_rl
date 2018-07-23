@@ -3,7 +3,6 @@ import argparse
 import json
 import os
 import pickle as pkl
-from collections import OrderedDict
 from os.path import join, exists
 
 import torch
@@ -145,8 +144,9 @@ def main(args):
                                   args.dropout)
 
     if elmo:
-        net_args['embedding'] = 'elmo'
-        net_args['elmo_dropout'] = args.elmo_dropout
+        net_args['elmo'] = {
+            'elmo_dropout': args.elmo_dropout
+        }
         net.set_elmo_embedding(elmo)
     elif args.w2v:
         # NOTE: the pretrained embedding having the same dimension

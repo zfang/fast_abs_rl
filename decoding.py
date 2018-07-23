@@ -62,12 +62,16 @@ class Abstractor(object):
         abs_args = abs_meta['net_args']
         abs_ckpt = load_best_ckpt(abs_dir)
         word2id = pkl.load(open(join(abs_dir, 'vocab.pkl'), 'rb'))
-        abstractor = CopySumm(**abs_args)
-        if abs_args.get('embedding') == 'elmo':
+        elmo = None
+        if 'elmo' in abs_args:
+            elmo_args = abs_args['elmo']
             vocab_to_cache = [w for w, i in sorted(list(word2id.items()), key=itemgetter(1))]
-            abstractor.set_elmo_embedding(get_elmo(dropout=abs_args.get('elmo_dropout', 0),
-                                                   vocab_to_cache=vocab_to_cache,
-                                                   cuda=cuda))
+            elmo = get_elmo(dropout=elmo_args.get('dropout', 0),
+                            vocab_to_cache=vocab_to_cache)
+            del abs_args['elmo']
+        abstractor = CopySumm(**abs_args)
+        if elmo is not None:
+            abstractor.set_elmo_embedding(elmo)
         abstractor.load_state_dict(abs_ckpt)
         self._device = torch.device('cuda' if cuda else 'cpu')
         self._net = abstractor.to(self._device)
@@ -195,7 +199,18 @@ class RLExtractor(object):
         assert ext_meta['net'] == 'rnn-ext_abs_rl'
         ext_args = ext_meta['net_args']['extractor']['net_args']
         word2id = pkl.load(open(join(ext_dir, 'agent_vocab.pkl'), 'rb'))
+
+        elmo = None
+        if 'elmo' in ext_args:
+            elmo_args = ext_args['elmo']
+            vocab_to_cache = [w for w, i in sorted(list(word2id.items()), key=itemgetter(1))]
+            elmo = get_elmo(dropout=elmo_args.get('dropout', 0),
+                            vocab_to_cache=vocab_to_cache)
+            del ext_args['elmo']
         extractor = PtrExtractSumm(**ext_args)
+        if elmo is not None:
+            extractor.set_elmo_embedding(elmo)
+
         agent = ActorCritic(extractor._sent_enc,
                             extractor._art_enc,
                             extractor._extractor,

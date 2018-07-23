@@ -53,11 +53,16 @@ def load_ext_net(ext_dir):
     ext_ckpt = load_best_ckpt(ext_dir)
     ext_args = ext_meta['net_args']
     vocab = pkl.load(open(join(ext_dir, 'vocab.pkl'), 'rb'))
-    ext = PtrExtractSumm(**ext_args)
-    if ext_args.get('embedding') == 'elmo':
+    elmo = None
+    if 'elmo' in ext_args:
+        elmo_args = ext_args['elmo']
         vocab_to_cache = [w for w, i in sorted(list(vocab.items()), key=itemgetter(1))]
-        ext.set_elmo_embedding(get_elmo(dropout=ext_args.get('elmo_dropout', 0),
-                                        vocab_to_cache=vocab_to_cache))
+        elmo = get_elmo(dropout=elmo_args.get('dropout', 0),
+                        vocab_to_cache=vocab_to_cache)
+        del ext_args['elmo']
+    ext = PtrExtractSumm(**ext_args)
+    if elmo is not None:
+        ext.set_elmo_embedding(elmo)
     ext.load_state_dict(ext_ckpt)
     return ext, vocab
 

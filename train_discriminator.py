@@ -194,8 +194,9 @@ def main(args):
     net = ConvNet(**meta['net_args'])
 
     if elmo:
-        meta['net_args']['embedding'] = 'elmo'
-        meta['net_args']['elmo_dropout'] = args.elmo_dropout
+        meta['net_args']['elmo'] = {
+            'elmo_dropout': args.elmo_dropout
+        }
         net.set_elmo_embedding(elmo)
     else:
         net.set_embedding(embedding.weight)
