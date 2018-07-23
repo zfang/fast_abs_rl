@@ -36,6 +36,8 @@ class ElmoWordEmbedding(torch.nn.Module):
         return self._elmo.get_output_dim()
 
     def forward(self, word_inputs: torch.Tensor) -> torch.Tensor:
+        if len(word_inputs.shape) == 1:
+            word_inputs = word_inputs.unsqueeze(dim=-1)
         return self._elmo.forward(torch.zeros(word_inputs.shape), word_inputs)
 
     def cuda(self, device=None):

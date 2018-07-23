@@ -69,6 +69,7 @@ class Abstractor(object):
             elmo = get_elmo(dropout=elmo_args.get('dropout', 0),
                             vocab_to_cache=vocab_to_cache)
             del abs_args['elmo']
+
         abstractor = CopySumm(**abs_args)
         if elmo is not None:
             abstractor.set_elmo_embedding(elmo)
