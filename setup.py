@@ -111,4 +111,4 @@ setup(
 )
 
 # clean up
-# shutil.rmtree(package_dir)
+shutil.rmtree(package_dir)
