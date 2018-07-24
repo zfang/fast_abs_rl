@@ -265,7 +265,10 @@ if __name__ == '__main__':
                         help='use min-max scaling instead of normalization on reward')
     parser.add_argument('--beam-search', action='store_true',
                         help='use beam search on abstractor')
+    parser.add_argument('--disable-cudnn', action='store_true',
+                        help='disable cudnn')
     args = parser.parse_args()
     args.cuda = torch.cuda.is_available() and not args.no_cuda
+    torch.backends.cudnn.enabled = not args.disable_cudnn
 
     train(args)
