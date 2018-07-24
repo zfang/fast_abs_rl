@@ -5,6 +5,7 @@ from torch.nn import init
 
 from . import beam_search as bs
 from .attention import step_attention
+from .elmo import ElmoWordEmbedding
 from .summ import Seq2SeqSumm, AttentionalLSTMDecoder
 from .util import len_mask, get_device
 
@@ -171,6 +172,7 @@ class CopySumm(Seq2SeqSumm):
         return outputs
 
     def set_elmo_embedding(self, embedding):
+        assert isinstance(embedding, ElmoWordEmbedding)
         self._embedding = embedding
         self._decoder._embedding = embedding
 
@@ -251,7 +253,11 @@ class CopyLSTMDecoder(AttentionalLSTMDecoder):
         return k_tok, k_lp, (states, dec_out), score
 
     def _compute_gen_prob(self, dec_out, extend_vsize, eps=1e-6):
-        logit = torch.mm(dec_out, self._embedding.weight.t())
+        embedding_weight = self._embedding.weight.t()
+        if dec_out.device != embedding_weight.device:
+            embedding_weight = embedding_weight.to(dec_out.device)
+
+        logit = torch.mm(dec_out, embedding_weight)
         bsize, vsize = logit.size()
         if extend_vsize > vsize:
             ext_logit = torch.Tensor(bsize, extend_vsize - vsize

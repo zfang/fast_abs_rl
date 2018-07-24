@@ -4,6 +4,7 @@ from torch.nn import functional as F
 from torch.nn import init
 
 from .attention import prob_normalize
+from .elmo import ElmoWordEmbedding
 from .rnn import MultiLayerLSTMCells
 from .rnn import lstm_encoder
 from .util import sequence_mean, len_mask, get_device
@@ -39,6 +40,7 @@ class ConvSentEncoder(nn.Module):
         self._embedding.weight.data.copy_(embedding)
 
     def set_elmo_embedding(self, embedding):
+        assert isinstance(embedding, ElmoWordEmbedding)
         self._embedding = embedding
 
 
