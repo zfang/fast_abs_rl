@@ -1,11 +1,20 @@
 """ utility functions"""
+import operator as op
 import os
 import re
+from collections import Counter, defaultdict
+from functools import reduce
+from itertools import product
 from os.path import basename
 
 import gensim
 import torch
+from cytoolz import concat, curry
+from torch import multiprocessing as mp
 from torch import nn
+
+import sys
+sys.path.append("..")
 
 from model.elmo import ElmoWordEmbedding
 
@@ -16,6 +25,11 @@ END = 3
 
 ELMO_OPTIONS_FILE = "https://s3-us-west-2.amazonaws.com/allennlp/models/elmo/2x4096_512_2048cnn_2xhighway_5.5B/elmo_2x4096_512_2048cnn_2xhighway_5.5B_options.json"
 ELMO_WEIGHT_FILE = "https://s3-us-west-2.amazonaws.com/allennlp/models/elmo/2x4096_512_2048cnn_2xhighway_5.5B/elmo_2x4096_512_2048cnn_2xhighway_5.5B_weights.hdf5"
+
+_PRUNE = defaultdict(
+    lambda: 2,
+    {1: 5, 2: 5, 3: 5, 4: 5, 5: 5, 6: 4, 7: 3, 8: 3}
+)
 
 
 def count_data(path):
@@ -77,3 +91,39 @@ def get_elmo(dropout=0.5, requires_grad=False, vocab_to_cache=None, cuda=True):
         elmo = elmo.cuda()
 
     return elmo
+
+
+def rerank(all_beams, ext_inds):
+    beam_lists = (all_beams[i: i + n] for i, n in ext_inds if n > 0)
+    return list(concat(map(rerank_one, beam_lists)))
+
+
+def rerank_mp(all_beams, ext_inds):
+    beam_lists = [all_beams[i: i + n] for i, n in ext_inds if n > 0]
+    with mp.Pool(os.cpu_count() or 1) as pool:
+        reranked = pool.map(rerank_one, beam_lists)
+    return list(concat(reranked))
+
+
+def rerank_one(beams):
+    @curry
+    def process_beam(beam, n):
+        for b in beam[:n]:
+            b.gram_cnt = Counter(_make_n_gram(b.sequence))
+        return beam[:n]
+
+    beams = map(process_beam(n=_PRUNE[len(beams)]), beams)
+    best_hyps = max(product(*beams), key=_compute_score)
+    dec_outs = [h.sequence for h in best_hyps]
+    return dec_outs
+
+
+def _make_n_gram(sequence, n=2):
+    return (tuple(sequence[i:i + n]) for i in range(len(sequence) - (n - 1)))
+
+
+def _compute_score(hyps):
+    all_cnt = reduce(op.iadd, (h.gram_cnt for h in hyps), Counter())
+    repeat = sum(c - 1 for g, c in all_cnt.items() if c > 1)
+    lp = sum(h.logprob for h in hyps) / sum(len(h.sequence) for h in hyps)
+    return (-repeat, lp)

@@ -3,7 +3,6 @@ import argparse
 import json
 import os
 import pickle as pkl
-from collections import OrderedDict
 from os.path import join, exists
 
 import torch

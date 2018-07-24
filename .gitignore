@@ -10,4 +10,7 @@ cnn-dailymail-*/
 meteor-1.5/
 src/
 .stats/
+build/
+dist/
+fast_abs_rl.egg-info/
 *.log

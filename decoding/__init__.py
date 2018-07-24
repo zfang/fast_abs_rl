@@ -1,14 +1,21 @@
 """ decoding utilities"""
 import json
+import logging
 import os
 import pickle as pkl
 import re
+from datetime import timedelta
 from itertools import starmap
 from operator import itemgetter
 from os.path import join
+from time import time
 
 import torch
 from cytoolz import curry
+from cytoolz import identity
+
+import sys
+sys.path.append("..")
 
 from data.batcher import convert2id, pad_batch_tensorize
 from data.data import CnnDmDataset
@@ -16,6 +23,8 @@ from model.copy_summ import CopySumm
 from model.extract import ExtractSumm, PtrExtractSumm
 from model.rl import ActorCritic
 from utils import PAD, UNK, START, END, get_elmo
+from utils import rerank_mp
+from .postprocessing import postprocess
 
 try:
     DATASET_DIR = os.environ['DATA']
@@ -235,3 +244,62 @@ class RLExtractor(object):
     @property
     def word2id(self):
         return self._word2id
+
+
+def load_models(model_dir, beam_size, max_len, cuda):
+    with open(os.path.join(model_dir, 'meta.json')) as f:
+        meta = json.loads(f.read())
+    if meta['net_args']['abstractor'] is None:
+        # NOTE: if no abstractor is provided then
+        #       the whole model would be extractive summarization
+        assert beam_size == 1
+        abstractor = identity
+    else:
+        if beam_size == 1:
+            abstractor = Abstractor(os.path.join(model_dir, 'abstractor'),
+                                    max_len, cuda)
+        else:
+            abstractor = BeamAbstractor(os.path.join(model_dir, 'abstractor'),
+                                        max_len, cuda)
+
+    extractor = RLExtractor(model_dir, cuda=cuda)
+
+    return extractor, abstractor
+
+
+def decode(raw_sentences,
+           model_dir,
+           beam_size,
+           diverse,
+           max_len,
+           cuda,
+           postpro):
+    start = time()
+    # setup model
+    extractor, abstractor = load_models(model_dir=model_dir, beam_size=beam_size, max_len=max_len, cuda=cuda)
+
+    tokenized_sentences = []
+    ext = extractor(tokenized_sentences)[:-1]  # exclude EOE
+    if not ext:
+        # use top-5 if nothing is extracted
+        # in some rare cases rnn-ext does not extract at all
+        ext = list(range(5))[:len(tokenized_sentences)]
+    else:
+        ext = [i.item() for i in ext]
+    ext_sentences = [tokenized_sentences[i] for i in ext]
+
+    if beam_size > 1:
+        all_beams = abstractor(ext_sentences, beam_size, diverse)
+        dec_outs = rerank_mp(all_beams, [(0, len(ext_sentences))])
+    else:
+        dec_outs = abstractor(ext_sentences)
+
+    if postpro:
+        decoded_sentences = postprocess(dec_outs)
+    else:
+        decoded_sentences = [' '.join(dec) for dec in dec_outs]
+
+    logging.info('Decoded {} sentences in {} seconds'.format(len(raw_sentences),
+                                                             timedelta(seconds=int(time() - start))))
+
+    return decoded_sentences

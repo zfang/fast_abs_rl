@@ -14,11 +14,10 @@ from tqdm import tqdm
 from data.batcher import BucketedGenerater, pad_batch_tensorize, coll_fn_extract, \
     convert_batch_extract_ptr, prepro_fn_extract, tokenize
 from data.data import CnnDmDataset
-from decode_full_model import rerank
 from decoding import Abstractor, BeamAbstractor
 from model.cnn import ConvNet
 from training import BasicPipeline, BasicTrainer, basic_validate, get_basic_grad_fn
-from utils import UNK, PAD, get_elmo
+from utils import UNK, PAD, get_elmo, rerank
 
 BUCKET_SIZE = 6400
 MAX_ABS_LEN = 30

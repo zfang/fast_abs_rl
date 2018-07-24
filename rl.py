@@ -10,7 +10,7 @@ from torch import autograd
 from torch.nn import functional as F
 from torch.nn.utils import clip_grad_norm_
 
-from decode_full_model import rerank
+from utils import rerank
 from decoding import BeamAbstractor
 from metric import compute_rouge_l, compute_rouge_n
 from model.util import get_device

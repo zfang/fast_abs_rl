@@ -1,23 +1,19 @@
 """ run decoding of rnn-ext + abs + RL (+ rerank)"""
 import argparse
 import json
-import operator as op
 import os
-from collections import Counter, defaultdict
 from datetime import timedelta
-from functools import reduce
-from itertools import product
 from os.path import join
 from time import time
 
 import torch
-from cytoolz import identity, concat, curry
-from torch import multiprocessing as mp
+from cytoolz import identity
 from torch.utils.data import DataLoader
 
 from data.batcher import tokenize
 from decoding import Abstractor, RLExtractor, DecodeDataset, BeamAbstractor
 from decoding import make_html_safe
+from utils import rerank_mp
 
 
 def decode(save_path, model_dir, split, batch_size,
@@ -99,48 +95,6 @@ def decode(save_path, model_dir, split, batch_size,
                     timedelta(seconds=int(time() - start))
                 ), end='')
     print()
-
-
-_PRUNE = defaultdict(
-    lambda: 2,
-    {1: 5, 2: 5, 3: 5, 4: 5, 5: 5, 6: 4, 7: 3, 8: 3}
-)
-
-
-def rerank(all_beams, ext_inds):
-    beam_lists = (all_beams[i: i + n] for i, n in ext_inds if n > 0)
-    return list(concat(map(rerank_one, beam_lists)))
-
-
-def rerank_mp(all_beams, ext_inds):
-    beam_lists = [all_beams[i: i + n] for i, n in ext_inds if n > 0]
-    with mp.Pool(8) as pool:
-        reranked = pool.map(rerank_one, beam_lists)
-    return list(concat(reranked))
-
-
-def rerank_one(beams):
-    @curry
-    def process_beam(beam, n):
-        for b in beam[:n]:
-            b.gram_cnt = Counter(_make_n_gram(b.sequence))
-        return beam[:n]
-
-    beams = map(process_beam(n=_PRUNE[len(beams)]), beams)
-    best_hyps = max(product(*beams), key=_compute_score)
-    dec_outs = [h.sequence for h in best_hyps]
-    return dec_outs
-
-
-def _make_n_gram(sequence, n=2):
-    return (tuple(sequence[i:i + n]) for i in range(len(sequence) - (n - 1)))
-
-
-def _compute_score(hyps):
-    all_cnt = reduce(op.iadd, (h.gram_cnt for h in hyps), Counter())
-    repeat = sum(c - 1 for g, c in all_cnt.items() if c > 1)
-    lp = sum(h.logprob for h in hyps) / sum(len(h.sequence) for h in hyps)
-    return (-repeat, lp)
 
 
 if __name__ == '__main__':
