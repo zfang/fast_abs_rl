@@ -27,11 +27,6 @@ class ElmoWordEmbedding(torch.nn.Module):
                                        projection_dim=projection_dim,
                                        vocab_to_cache=vocab_to_cache)
 
-        # self.weight is used to compute probabilities
-        word_embedding: torch.nn.spar = self._elmo._elmo._elmo_lstm._word_embedding
-        self.weight: torch.nn.Parameter = torch.cat((word_embedding.weight, word_embedding.weight), dim=1)
-        self.num_embeddings = word_embedding.num_embeddings
-
     def get_output_dim(self):
         return self._elmo.get_output_dim()
 
@@ -43,11 +38,17 @@ class ElmoWordEmbedding(torch.nn.Module):
             word_inputs = word_inputs.to(model_device)
         return self._elmo.forward(torch.zeros(word_inputs.shape), word_inputs)
 
-    def cuda(self, device=None):
-        super().cuda()
-        self.weight = self.weight.to(self.model_device())
-
-        return self
-
     def model_device(self):
         return next(self.parameters()).device
+
+    @property
+    def weight(self):
+        return torch.cat((self.word_embedding.weight, self.word_embedding.weight), dim=1)
+
+    @property
+    def num_embeddings(self):
+        return self.word_embedding.num_embeddings
+
+    @property
+    def word_embedding(self):
+        return self._elmo._elmo._elmo_lstm._word_embedding
