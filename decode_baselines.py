@@ -16,6 +16,11 @@ from decoding import make_html_safe
 
 MAX_ABS_NUM = 6  # need to set max sentences to extract for non-RL extractor
 
+try:
+    DATASET_DIR = os.environ['DATA']
+except KeyError:
+    print('please use environment variable to specify data directories')
+
 
 def decode(save_path, abs_dir, ext_dir, split, batch_size, max_len, cuda):
     start = time()
@@ -38,7 +43,7 @@ def decode(save_path, abs_dir, ext_dir, split, batch_size, max_len, cuda):
         articles = list(filter(bool, batch))
         return articles
 
-    dataset = DecodeDataset(split)
+    dataset = DecodeDataset(split, DATASET_DIR)
 
     n_data = len(dataset)
     loader = DataLoader(

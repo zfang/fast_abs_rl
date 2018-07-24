@@ -15,6 +15,11 @@ from decoding import Abstractor, RLExtractor, DecodeDataset, BeamAbstractor
 from decoding import make_html_safe
 from utils import rerank_mp
 
+try:
+    DATASET_DIR = os.environ['DATA']
+except KeyError:
+    print('please use environment variable to specify data directories')
+
 
 def decode(save_path, model_dir, split, batch_size,
            beam_size, diverse, max_len, cuda):
@@ -41,7 +46,7 @@ def decode(save_path, model_dir, split, batch_size,
         articles = list(filter(bool, batch))
         return articles
 
-    dataset = DecodeDataset(split)
+    dataset = DecodeDataset(split, DATASET_DIR)
 
     n_data = len(dataset)
     loader = DataLoader(

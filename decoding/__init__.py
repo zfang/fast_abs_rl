@@ -26,18 +26,12 @@ from utils import PAD, UNK, START, END, get_elmo
 from utils import rerank_mp
 from .postprocessing import postprocess
 
-try:
-    DATASET_DIR = os.environ['DATA']
-except KeyError:
-    print('please use environment variable to specify data directories')
-
-
 class DecodeDataset(CnnDmDataset):
     """ get the article sentences only (for decoding use)"""
 
-    def __init__(self, split):
+    def __init__(self, split, dataset_dir):
         assert split in ['val', 'test']
-        super().__init__(split, DATASET_DIR)
+        super().__init__(split, dataset_dir)
 
     def __getitem__(self, i):
         js_data = super().__getitem__(i)
