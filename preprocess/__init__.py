@@ -41,7 +41,10 @@ def correct_spelling(tokens, threshold=1e-6):
     for i in range(len(tokens)):
         if word_frequency(tokens[i], 'en') != 0 or not is_ascii(tokens[i]):
             continue
-        correction = list(SPELL.unknown([tokens[i]]))[0]
+        unknowns = SPELL.unknown([tokens[i]])
+        if not unknowns:
+            continue
+        correction = list(unknowns)[0]
         if SPELL.word_probability(correction) > threshold:
             tokens[i] = correction
 
@@ -187,7 +190,7 @@ def preprocess(texts,
         scores.append(score)
 
     if not docs or (limit == 0 and orig_relevance_scores is None):
-        return docs
+        return [' '.join(sent) for sent in docs]
 
     sif_embeddings = get_sif_embeddings(lemmas)
     normalized_sif_embeddings = normalize(sif_embeddings, axis=1)
