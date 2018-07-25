@@ -241,7 +241,10 @@ class RLExtractor(object):
         return self._word2id
 
 
-def load_models(model_dir, beam_size, max_len, cuda):
+def load_models(model_dir,
+                beam_size,
+                max_len=30,
+                cuda=torch.cuda.is_available()):
     with open(os.path.join(model_dir, 'meta.json')) as f:
         meta = json.loads(f.read())
     if meta['net_args']['abstractor'] is None:
@@ -266,33 +269,34 @@ def decode(raw_sentences,
            extractor,
            abstractor,
            beam_size,
-           diverse,
-           postpro):
-    start = time()
-    # setup model
+           diverse=1,
+           postpro=False):
+    with torch.no_grad():
+        start = time()
+        # setup model
 
-    tokenized_sentences = list(map(tokenize(None), raw_sentences))
-    ext = extractor(tokenized_sentences)[:-1]  # exclude EOE
-    if not ext:
-        # use top-5 if nothing is extracted
-        # in some rare cases rnn-ext does not extract at all
-        ext = list(range(5))[:len(tokenized_sentences)]
-    else:
-        ext = [i.item() for i in ext]
-    ext_sentences = [tokenized_sentences[i] for i in ext]
+        tokenized_sentences = list(map(tokenize(None), raw_sentences))
+        ext = extractor(tokenized_sentences)[:-1]  # exclude EOE
+        if not ext:
+            # use top-5 if nothing is extracted
+            # in some rare cases rnn-ext does not extract at all
+            ext = list(range(5))[:len(tokenized_sentences)]
+        else:
+            ext = [i.item() for i in ext]
+        ext_sentences = [tokenized_sentences[i] for i in ext]
 
-    if beam_size > 1:
-        all_beams = abstractor(ext_sentences, beam_size, diverse)
-        dec_outs = rerank_mp(all_beams, [(0, len(ext_sentences))])
-    else:
-        dec_outs = abstractor(ext_sentences)
+        if beam_size > 1:
+            all_beams = abstractor(ext_sentences, beam_size, diverse)
+            dec_outs = rerank_mp(all_beams, [(0, len(ext_sentences))])
+        else:
+            dec_outs = abstractor(ext_sentences)
 
-    if postpro:
-        decoded_sentences = postprocess(dec_outs)
-    else:
-        decoded_sentences = [' '.join(dec) for dec in dec_outs]
+        if postpro:
+            decoded_sentences = postprocess(dec_outs)
+        else:
+            decoded_sentences = [' '.join(dec) for dec in dec_outs]
 
-    logging.info('Decoded {} sentences in {} seconds'.format(len(raw_sentences),
-                                                             timedelta(seconds=int(time() - start))))
+        logging.info('Decoded {} sentences in {} seconds'.format(len(raw_sentences),
+                                                                 timedelta(seconds=int(time() - start))))
 
-    return decoded_sentences
+        return decoded_sentences
