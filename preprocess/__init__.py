@@ -146,7 +146,7 @@ def preprocess(texts,
     scores = []
 
     min_threshold = token_threshold
-    max_threshold = 30 * token_threshold or sys.maxsize
+    max_threshold = 1e2 * token_threshold or sys.maxsize
 
     pos_tagging = pos_tag_distribution is not None and pos_tag_chisq_critical_value > 0
     if pos_tagging:
