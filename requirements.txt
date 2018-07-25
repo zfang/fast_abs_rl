@@ -12,4 +12,4 @@ ftfy
 nltk
 commonregex
 pyspellchecker
-https://github.com/zfang/fast_abs_rl/blob/master/lib/embeddings-0.0.8-py3-none-any.whl
+https://github.com/zfang/fast_abs_rl/raw/master/lib/embeddings-0.0.8-py3-none-any.whl
