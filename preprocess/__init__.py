@@ -72,18 +72,12 @@ def fix_missing_period(line):
 
 def contains_personal_info(text):
     parsed_text = CommonRegex(text)
-    return any([bool(parsed_text.dates),
-                bool(parsed_text.times),
-                bool(parsed_text.phones),
-                bool(parsed_text.links),
+    return any([bool(parsed_text.links),
                 bool(parsed_text.emails),
                 bool(parsed_text.ips),
                 bool(parsed_text.ipv6s),
-                bool(parsed_text.prices),
-                bool(parsed_text.hex_colors),
                 bool(parsed_text.credit_cards),
                 bool(parsed_text.btc_addresses),
-                bool(parsed_text.street_addresses),
                 ])
 
 
@@ -143,7 +137,7 @@ def preprocess(texts,
     scores = []
 
     min_threshold = token_threshold
-    max_threshold = 15 * token_threshold or sys.maxsize
+    max_threshold = 30 * token_threshold or sys.maxsize
 
     pos_tagging = pos_tag_distribution is not None and pos_tag_chisq_critical_value > 0
     if pos_tagging:
