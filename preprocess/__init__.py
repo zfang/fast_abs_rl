@@ -153,7 +153,7 @@ def preprocess(texts,
     else:
         parser = SPACY
 
-    for doc, score in zip(parser.pipe(map(clean_text, texts), n_threads=os.cpu_count(), batch_size=10000),
+    for doc, score in zip(parser.pipe(map(clean_text, texts), n_threads=(os.cpu_count() // 4) or 1, batch_size=10000),
                           relevance_scores):
         if doc.text in found_sentences:
             log_removed(doc.text, 'duplicate')
