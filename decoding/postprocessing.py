@@ -5,8 +5,10 @@ import spacy
 
 from .constants import DAYS, MONTHS, NAMES, USCITIES, NA_STATES, COUNTRIES, NATIONALITIES
 
+TERMINAL_PUNCTUATION = list("""!,.:;?@""")
+
 PUNCTUATION_SPACE_PATTERN = re.compile(r'(\s+[{}])'.format(
-    ''.join(re.escape(p) for p in string.punctuation if p != '\\')))
+    ''.join(re.escape(p) for p in TERMINAL_PUNCTUATION)))
 
 WORDS_TO_CAPITALIZE_MAP = {word.lower(): word for word in set([w.capitalize() for w in {'i'} | DAYS | MONTHS])
                            | NAMES | USCITIES | NA_STATES | COUNTRIES | NATIONALITIES}
@@ -30,8 +32,6 @@ CONTRACTION_SUFFIX_PATTERN = re.compile(r'\b\s+({})\b'.format('|'.join(
     )
 )))
 
-TERMINAL_PUNCTUATION = list("""!#$%&'*+,-./:;<=>?@~""")
-
 SPACY_PARSER = spacy.load('en_core_web_sm', diable=['ner', 'tagger'])
 
 
@@ -39,7 +39,7 @@ def postprocess(decoded_tokens):
     for dec in decoded_tokens:
         while dec[0] in TERMINAL_PUNCTUATION:
             dec.pop(0)
-        for i in range(len(dec), 0, -1):
+        for i in range(len(dec) - 1, 0, -1):
             if dec[i] == dec[i - 1]:
                 dec.pop(i)
 

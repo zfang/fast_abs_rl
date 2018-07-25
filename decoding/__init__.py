@@ -275,7 +275,7 @@ def decode(raw_sentences,
         start = time()
         # setup model
 
-        tokenized_sentences = list(map(tokenize(None), raw_sentences))
+        tokenized_sentences = tokenize(None, raw_sentences)
         ext = extractor(tokenized_sentences)[:-1]  # exclude EOE
         if not ext:
             # use top-5 if nothing is extracted

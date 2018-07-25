@@ -134,7 +134,8 @@ def preprocess(texts,
                lambda_=0.4,
                relevance_scores=None,
                pos_tag_distribution=None,
-               pos_tag_chisq_critical_value=1e-3):
+               pos_tag_chisq_critical_value=1e-3,
+               check_spelling=False):
     orig_relevance_scores = relevance_scores
     relevance_scores = relevance_scores or np.zeros(len(texts))
 
@@ -184,7 +185,8 @@ def preprocess(texts,
 
         raw_tokens = list(filter(lambda t: bool(t.text.strip()), doc))
         tokens = [token.text for token in raw_tokens]
-        tokens = correct_spelling(tokens)
+        if check_spelling:
+            tokens = correct_spelling(tokens)
         tokens = fix_missing_period(tokens)
 
         docs.append(tokens)
