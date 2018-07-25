@@ -5,7 +5,6 @@ import os
 import pickle as pkl
 import re
 import sys
-from datetime import timedelta
 from itertools import starmap
 from operator import itemgetter
 from os.path import join
@@ -24,7 +23,7 @@ from model.extract import ExtractSumm, PtrExtractSumm
 from model.rl import ActorCritic
 from utils import PAD, UNK, START, END, get_elmo
 from utils import rerank_mp
-from .postprocessing import postprocess
+from .postprocess import postprocess
 
 
 class DecodeDataset(CnnDmDataset):
@@ -51,7 +50,7 @@ def load_best_ckpt(model_dir, reverse=False):
     ckpt_matcher = re.compile('^ckpt-.*-[0-9]*')
     ckpts = sorted([c for c in ckpts if ckpt_matcher.match(c)],
                    key=lambda c: float(c.split('-')[1]), reverse=reverse)
-    print('loading checkpoint {}...'.format(ckpts[0]))
+    logging.info('loading checkpoint {}...'.format(ckpts[0]))
     ckpt = torch.load(
         join(model_dir, 'ckpt/{}'.format(ckpts[0])),
         map_location=lambda storage, loc: storage
@@ -297,7 +296,7 @@ def decode(raw_sentences,
         else:
             decoded_sentences = [' '.join(dec) for dec in dec_outs]
 
-        logging.info('Decoded {} sentences in {} seconds'.format(len(raw_sentences),
-                                                                 timedelta(seconds=int(time() - start))))
+        logging.info('Decoded {} sentences in {:.3f}s'.format(len(raw_sentences),
+                                                              time() - start))
 
         return decoded_sentences

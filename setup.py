@@ -47,17 +47,10 @@ def copyanything(src, dst):
             raise
 
 
-FILES_TO_COPY = ('preprocess', 'model', 'utils', 'decoding', 'data',)
+FILES_TO_COPY = ('preprocess', 'model', 'utils', 'decoding', 'data', '__init__.py', '__main__.py')
 
 package_dir = os.path.join(here, 'fast_abs_rl/')
 os.makedirs(package_dir, exist_ok=True)
-
-with open(os.path.join(package_dir, '__init__.py'), 'w', encoding='utf8') as out:
-    code = [
-        'from fast_abs_rl.preprocess import preprocess',
-        'from fast_abs_rl.decoding import load_models, decode',
-    ]
-    out.write('\n'.join(code))
 
 for src in FILES_TO_COPY:
     dst = os.path.join(package_dir, src)
