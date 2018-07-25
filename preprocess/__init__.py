@@ -44,9 +44,17 @@ def correct_spelling(tokens, threshold=1e-6):
         unknowns = SPELL.unknown([tokens[i]])
         if not unknowns:
             continue
-        correction = list(unknowns)[0]
-        if SPELL.word_probability(correction) > threshold:
-            tokens[i] = correction
+        misspelled = list(unknowns)[0]
+        correction = SPELL.correction(misspelled)
+        if misspelled != correction:
+            correction_probability = SPELL.word_probability(correction)
+            if correction_probability > threshold:
+                tokens[i] = correction
+                LOGGER.debug(json.dumps({
+                    'misspelled': misspelled,
+                    'correction': correction,
+                    'correction_probability': correction_probability
+                }, ensure_ascii=False))
 
     return tokens
 
