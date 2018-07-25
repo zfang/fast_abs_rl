@@ -80,10 +80,10 @@ def configure_pretrained_net(args):
     agent = extractor.net
     agent_vocab = extractor.word2id
 
-    net_args = {}
-    net_args['abstractor'] = (None if abs_dir is None
-                              else json.load(open(join(abs_dir, 'meta.json'))))
-    net_args['extractor'] = json.load(open(join(ext_dir, 'meta.json')))['net_args']['extractor']
+    net_args = {
+        'abstractor': (None if abs_dir is None else json.load(open(join(abs_dir, 'meta.json')))),
+        'extractor': json.load(open(join(ext_dir, 'meta.json')))['net_args']['extractor']
+    }
 
     return agent, agent_vocab, abstractor, net_args
 
@@ -108,9 +108,10 @@ def configure_net(args):
     if args.cuda:
         agent = agent.cuda()
 
-    net_args = {}
-    net_args['abstractor'] = json.load(open(join(args.abs_dir, 'meta.json')))
-    net_args['extractor'] = json.load(open(join(args.ext_dir, 'meta.json')))
+    net_args = {
+        'abstractor': json.load(open(join(args.abs_dir, 'meta.json'))),
+        'extractor': json.load(open(join(args.ext_dir, 'meta.json')))
+    }
 
     return agent, agent_vocab, abstractor, net_args
 
@@ -118,18 +119,18 @@ def configure_net(args):
 def configure_training(opt, lr, clip_grad, lr_decay, batch_size,
                        gamma, reward, stop_coeff, stop_reward):
     assert opt in ['adam']
-    opt_kwargs = {}
-    opt_kwargs['lr'] = lr
+    opt_kwargs = {'lr': lr}
 
-    train_params = {}
-    train_params['optimizer'] = (opt, opt_kwargs)
-    train_params['clip_grad_norm'] = clip_grad
-    train_params['batch_size'] = batch_size
-    train_params['lr_decay'] = lr_decay
-    train_params['gamma'] = gamma
-    train_params['reward'] = reward
-    train_params['stop_coeff'] = stop_coeff
-    train_params['stop_reward'] = stop_reward
+    train_params = {
+        'optimizer': (opt, opt_kwargs),
+        'clip_grad_norm': clip_grad,
+        'batch_size': batch_size,
+        'lr_decay': lr_decay,
+        'gamma': gamma,
+        'reward': reward,
+        'stop_coeff': stop_coeff,
+        'stop_reward': stop_reward
+    }
 
     return train_params
 
@@ -177,8 +178,7 @@ def train(args):
 
     # save abstractor binary
     if args.abs_dir is not None:
-        abs_ckpt = {}
-        abs_ckpt['state_dict'] = load_best_ckpt(args.abs_dir)
+        abs_ckpt = {'state_dict': load_best_ckpt(args.abs_dir)}
         abs_vocab = pkl.load(open(join(args.abs_dir, 'vocab.pkl'), 'rb'))
         abs_dir = join(args.path, 'abstractor')
         os.makedirs(join(abs_dir, 'ckpt'), exist_ok=True)
@@ -188,10 +188,11 @@ def train(args):
         with open(join(abs_dir, 'vocab.pkl'), 'wb') as f:
             pkl.dump(abs_vocab, f)
     # save configuration
-    meta = {}
-    meta['net'] = 'rnn-ext_abs_rl'
-    meta['net_args'] = net_args
-    meta['train_params'] = train_params
+    meta = {
+        'net': 'rnn-ext_abs_rl',
+        'net_args': net_args,
+        'train_params': train_params
+    }
     with open(join(args.path, 'meta.json'), 'w') as f:
         json.dump(meta, f, indent=4)
     with open(join(args.path, 'agent_vocab.pkl'), 'wb') as f:

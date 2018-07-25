@@ -20,8 +20,7 @@ def get_basic_grad_fn(net, clip_grad, max_grad=1e2):
         if max_grad is not None and grad_norm >= max_grad:
             print('WARNING: Exploding Gradients {:.2f}'.format(grad_norm))
             grad_norm = max_grad
-        grad_log = {}
-        grad_log['grad_norm'] = grad_norm
+        grad_log = {'grad_norm': grad_norm}
         return grad_log
 
     return f
@@ -85,7 +84,8 @@ class BasicPipeline(object):
                 yield fw_args, bw_args
             self._n_epoch += 1
 
-    def get_loss_args(self, net_out, bw_args):
+    @staticmethod
+    def get_loss_args(net_out, bw_args):
         if isinstance(net_out, tuple):
             loss_args = net_out + bw_args
         else:

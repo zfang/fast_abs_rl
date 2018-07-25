@@ -210,7 +210,8 @@ class RLExtractor(object):
             elmo_args = ext_args['elmo']
             vocab_to_cache = [w for w, i in sorted(list(word2id.items()), key=itemgetter(1))]
             elmo = get_elmo(dropout=elmo_args.get('dropout', 0),
-                            vocab_to_cache=vocab_to_cache)
+                            vocab_to_cache=vocab_to_cache,
+                            cuda=cuda)
             del ext_args['elmo']
         extractor = PtrExtractSumm(**ext_args)
         if elmo is not None:

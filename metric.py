@@ -32,7 +32,7 @@ def compute_rouge_n(output, reference, n=1, mode='f'):
         f_score = 2 * (precision * recall) / (precision + recall)
         if mode == 'p':
             score = precision
-        if mode == 'r':
+        elif mode == 'r':
             score = recall
         else:
             score = f_score
@@ -72,7 +72,7 @@ def compute_rouge_l(output, reference, mode='f'):
         f_score = 2 * (precision * recall) / (precision + recall)
         if mode == 'p':
             score = precision
-        if mode == 'r':
+        elif mode == 'r':
             score = recall
         else:
             score = f_score
@@ -85,7 +85,7 @@ def _lcs(a, b):
     i = len(a)
     j = len(b)
     lcs = deque()
-    while (i > 0 and j > 0):
+    while i > 0 and j > 0:
         if a[i-1] == b[j-1]:
             lcs.appendleft(a[i-1])
             i -= 1
@@ -119,7 +119,7 @@ def compute_rouge_l_summ(summs, refs, mode='f'):
         f_score = 2 * (precision * recall) / (precision + recall)
         if mode == 'p':
             score = precision
-        if mode == 'r':
+        elif mode == 'r':
             score = recall
         else:
             score = f_score

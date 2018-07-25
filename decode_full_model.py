@@ -56,13 +56,13 @@ def decode(save_path, model_dir, split, batch_size,
 
     # prepare save paths and logs
     os.makedirs(join(save_path, 'output'), exist_ok=True)
-    dec_log = {}
-    dec_log['abstractor'] = meta['net_args']['abstractor']
-    dec_log['extractor'] = meta['net_args']['extractor']
-    dec_log['rl'] = True
-    dec_log['split'] = split
-    dec_log['beam'] = beam_size
-    dec_log['diverse'] = diverse
+    dec_log = {
+        'abstractor': meta['net_args']['abstractor'],
+        'extractor': meta['net_args']['extractor'], 'rl': True,
+        'split': split,
+        'beam': beam_size,
+        'diverse': diverse
+    }
     with open(join(save_path, 'log.json'), 'w') as f:
         json.dump(dec_log, f, indent=4)
 

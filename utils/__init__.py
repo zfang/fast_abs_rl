@@ -127,4 +127,4 @@ def _compute_score(hyps):
     all_cnt = reduce(op.iadd, (h.gram_cnt for h in hyps), Counter())
     repeat = sum(c - 1 for g, c in all_cnt.items() if c > 1)
     lp = sum(h.logprob for h in hyps) / sum(len(h.sequence) for h in hyps)
-    return (-repeat, lp)
+    return -repeat, lp

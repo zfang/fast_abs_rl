@@ -51,13 +51,14 @@ class MatchDataset(CnnDmDataset):
 
 def configure_net(vocab_size, emb_dim,
                   n_hidden, bidirectional, n_layer, dropout):
-    net_args = {}
-    net_args['vocab_size'] = vocab_size
-    net_args['emb_dim'] = emb_dim
-    net_args['n_hidden'] = n_hidden
-    net_args['bidirectional'] = bidirectional
-    net_args['n_layer'] = n_layer
-    net_args['dropout'] = dropout
+    net_args = {
+        'vocab_size': vocab_size,
+        'emb_dim': emb_dim,
+        'n_hidden': n_hidden,
+        'bidirectional': bidirectional,
+        'n_layer': n_layer,
+        'dropout': dropout
+    }
 
     net = CopySumm(**net_args)
     return net, net_args
@@ -66,14 +67,14 @@ def configure_net(vocab_size, emb_dim,
 def configure_training(opt, lr, clip_grad, lr_decay, batch_size):
     """ supports Adam optimizer only"""
     assert opt in ['adam']
-    opt_kwargs = {}
-    opt_kwargs['lr'] = lr
+    opt_kwargs = {'lr': lr}
 
-    train_params = {}
-    train_params['optimizer'] = (opt, opt_kwargs)
-    train_params['clip_grad_norm'] = clip_grad
-    train_params['batch_size'] = batch_size
-    train_params['lr_decay'] = lr_decay
+    train_params = {
+        'optimizer': (opt, opt_kwargs),
+        'clip_grad_norm': clip_grad,
+        'batch_size': batch_size,
+        'lr_decay': lr_decay
+    }
 
     nll = lambda logit, target: F.nll_loss(logit, target, reduce=False)
 
@@ -88,7 +89,7 @@ def build_batchers(word2id, cuda, debug):
 
     def sort_key(sample):
         src, target = sample
-        return (len(target), len(src))
+        return len(target), len(src)
 
     batchify = compose(
         batchify_fn_copy(PAD, START, END, cuda=cuda),
@@ -165,10 +166,11 @@ def main(args):
         os.makedirs(args.path)
     with open(join(args.path, 'vocab.pkl'), 'wb') as f:
         pkl.dump(word2id, f, pkl.HIGHEST_PROTOCOL)
-    meta = {}
-    meta['net'] = 'base_abstractor'
-    meta['net_args'] = net_args
-    meta['traing_params'] = train_params
+    meta = {
+        'net': 'base_abstractor',
+        'net_args': net_args,
+        'traing_params': train_params
+    }
     with open(join(args.path, 'meta.json'), 'w') as f:
         json.dump(meta, f, indent=4)
 

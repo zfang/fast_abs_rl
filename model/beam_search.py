@@ -6,7 +6,7 @@ from cytoolz import concat
 
 
 class _Hypothesis(object):
-    def __init__(self, sequence, logprob, hists, attns=[]):
+    def __init__(self, sequence, logprob, hists, attns=None):
         """
         seqence: list of int tokens
         logprob: current log probability
@@ -16,7 +16,7 @@ class _Hypothesis(object):
         self.sequence = sequence
         self.logprob = logprob
         self.hists = hists
-        self.attns = attns  # for unk replacement
+        self.attns = attns or []  # for unk replacement
 
     def extend_k(self, topk, logprobs, hists, attn=None, diverse=1.0):
         if attn is None:

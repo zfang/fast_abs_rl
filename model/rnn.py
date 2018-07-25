@@ -114,8 +114,7 @@ class MultiLayerLSTMCells(StackedLSTMCells):
     def __init__(self, input_size, hidden_size, num_layers,
                  bias=True, dropout=0.0):
         """ same as nn.LSTM but without (bidirectional)"""
-        cells = []
-        cells.append(nn.LSTMCell(input_size, hidden_size, bias))
+        cells = [nn.LSTMCell(input_size, hidden_size, bias)]
         for _ in range(num_layers - 1):
             cells.append(nn.LSTMCell(hidden_size, hidden_size, bias))
         super().__init__(cells, dropout)
@@ -127,7 +126,6 @@ class MultiLayerLSTMCells(StackedLSTMCells):
     def reset_parameters(self):
         for cell in self._cells:
             # xavier initilization
-            gate_size = self.hidden_size / 4
             for weight in [cell.weight_ih, cell.weight_hh]:
                 for w in torch.chunk(weight, 4, dim=0):
                     init.xavier_normal_(w)

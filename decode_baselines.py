@@ -54,14 +54,13 @@ def decode(save_path, abs_dir, ext_dir, split, batch_size, max_len, cuda):
     # prepare save paths and logs
     for i in range(MAX_ABS_NUM):
         os.makedirs(join(save_path, 'output_{}'.format(i)))
-    dec_log = {}
-    dec_log['abstractor'] = (None if abs_dir is None
-                             else json.load(open(join(abs_dir, 'meta.json'))))
-    dec_log['extractor'] = (None if ext_dir is None
-                            else json.load(open(join(ext_dir, 'meta.json'))))
-    dec_log['rl'] = False
-    dec_log['split'] = split
-    dec_log['beam'] = 1  # greedy decoding only
+    dec_log = {
+        'abstractor': (None if abs_dir is None else json.load(open(join(abs_dir, 'meta.json')))),
+        'extractor': (None if ext_dir is None else json.load(open(join(ext_dir, 'meta.json')))),
+        'rl': False,
+        'split': split,
+        'beam': 1
+    }
     with open(join(save_path, 'log.json'), 'w') as f:
         json.dump(dec_log, f, indent=4)
 
