@@ -67,16 +67,16 @@ def load_ext_net(ext_dir):
     return ext, vocab
 
 
-def configure_pretrained_net(pretrained_dir, cuda, beam_search):
+def configure_pretrained_net(args):
     """ load pretrained sub-modules and build the actor-critic network"""
-    abs_dir = os.path.join(pretrained_dir, 'abstractor/')
-    if beam_search:
-        abstractor = BeamAbstractor(abs_dir, MAX_ABS_LEN, cuda)
+    abs_dir = os.path.join(args.pretrained_dir, 'abstractor/')
+    if args.beam_search:
+        abstractor = BeamAbstractor(abs_dir, MAX_ABS_LEN, args.cuda)
     else:
-        abstractor = Abstractor(abs_dir, MAX_ABS_LEN, cuda)
+        abstractor = Abstractor(abs_dir, MAX_ABS_LEN, args.cuda)
 
-    ext_dir = pretrained_dir
-    extractor = RLExtractor(pretrained_dir, cuda=cuda)
+    ext_dir = args.pretrained_dir
+    extractor = RLExtractor(ext_dir, cuda=args.cuda)
     agent = extractor.net
     agent_vocab = extractor.word2id
 
@@ -88,29 +88,29 @@ def configure_pretrained_net(pretrained_dir, cuda, beam_search):
     return agent, agent_vocab, abstractor, net_args
 
 
-def configure_net(abs_dir, ext_dir, cuda, beam_search):
+def configure_net(args):
     """ load pretrained sub-modules and build the actor-critic network"""
     # load pretrained abstractor model
-    if abs_dir is not None:
-        if beam_search:
-            abstractor = BeamAbstractor(abs_dir, MAX_ABS_LEN, cuda)
+    if args.abs_dir is not None:
+        if args.beam_search:
+            abstractor = BeamAbstractor(args.abs_dir, MAX_ABS_LEN, args.cuda)
         else:
-            abstractor = Abstractor(abs_dir, MAX_ABS_LEN, cuda)
+            abstractor = Abstractor(args.abs_dir, MAX_ABS_LEN, args.cuda)
     else:
         abstractor = identity
 
     # load ML trained extractor net and buiild RL agent
-    extractor, agent_vocab = load_ext_net(ext_dir)
+    extractor, agent_vocab = load_ext_net(args.ext_dir)
     agent = ActorCritic(extractor._sent_enc,
                         extractor._art_enc,
                         extractor._extractor,
-                        ArticleBatcher(agent_vocab, cuda))
-    if cuda:
+                        ArticleBatcher(agent_vocab, args.cuda))
+    if args.cuda:
         agent = agent.cuda()
 
     net_args = {}
-    net_args['abstractor'] = json.load(open(join(abs_dir, 'meta.json')))
-    net_args['extractor'] = json.load(open(join(ext_dir, 'meta.json')))
+    net_args['abstractor'] = json.load(open(join(args.abs_dir, 'meta.json')))
+    net_args['extractor'] = json.load(open(join(args.ext_dir, 'meta.json')))
 
     return agent, agent_vocab, abstractor, net_args
 
@@ -160,11 +160,9 @@ def train(args):
 
     # make net
     if args.pretrained_dir:
-        agent, agent_vocab, abstractor, net_args = configure_pretrained_net(
-            args.pretrained_dir, args.cuda, args.beam_search)
+        agent, agent_vocab, abstractor, net_args = configure_pretrained_net(args)
     else:
-        agent, agent_vocab, abstractor, net_args = configure_net(
-            args.abs_dir, args.ext_dir, args.cuda, args.beam_search)
+        agent, agent_vocab, abstractor, net_args = configure_net(args)
 
     # configure training setting
     assert args.stop > 0
@@ -265,10 +263,7 @@ if __name__ == '__main__':
                         help='use min-max scaling instead of normalization on reward')
     parser.add_argument('--beam-search', action='store_true',
                         help='use beam search on abstractor')
-    parser.add_argument('--disable-cudnn', action='store_true',
-                        help='disable cudnn')
     args = parser.parse_args()
     args.cuda = torch.cuda.is_available() and not args.no_cuda
-    torch.backends.cudnn.enabled = not args.disable_cudnn
 
     train(args)

@@ -81,12 +81,13 @@ def make_embedding(id2word, w2v_file, initializer=None):
     return embedding, oovs
 
 
-def get_elmo(dropout=0.5, requires_grad=False, vocab_to_cache=None, cuda=True):
+def get_elmo(dropout=0.5, requires_grad=False, vocab_to_cache=None, projection_dim=None, cuda=True):
     elmo = ElmoWordEmbedding(options_file=ELMO_OPTIONS_FILE,
                              weight_file=ELMO_WEIGHT_FILE,
+                             vocab_to_cache=vocab_to_cache,
                              dropout=dropout,
                              requires_grad=requires_grad,
-                             vocab_to_cache=vocab_to_cache)
+                             projection_dim=projection_dim)
     if cuda:
         elmo = elmo.cuda()
 

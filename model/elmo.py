@@ -1,3 +1,4 @@
+from functools import lru_cache
 from typing import List
 
 import torch
@@ -33,13 +34,7 @@ class ElmoWordEmbedding(torch.nn.Module):
     def forward(self, word_inputs: torch.Tensor) -> torch.Tensor:
         if len(word_inputs.shape) == 1:
             word_inputs = word_inputs.unsqueeze(dim=-1)
-        model_device = self.model_device()
-        if word_inputs.device != model_device:
-            word_inputs = word_inputs.to(model_device)
-        return self._elmo.forward(torch.zeros(word_inputs.shape), word_inputs)
-
-    def model_device(self):
-        return next(self.parameters()).device
+        return self._elmo.forward(word_inputs, word_inputs)
 
     @property
     def weight(self):
