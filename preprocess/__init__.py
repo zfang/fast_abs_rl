@@ -196,6 +196,9 @@ def preprocess(texts,
     if not docs or (limit == 0 and orig_relevance_scores is None):
         return [' '.join(sent) for sent in docs]
 
+    if lambda_ == 1:
+        return [docs[i] for i in np.argsort(scores)[::-1]]
+
     sif_embeddings = get_sif_embeddings(lemmas)
     normalized_sif_embeddings = normalize(sif_embeddings, axis=1)
     similarity_matrix = np.dot(normalized_sif_embeddings, np.transpose(normalized_sif_embeddings))
