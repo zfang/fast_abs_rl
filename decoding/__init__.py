@@ -71,7 +71,8 @@ class Abstractor(object):
             elmo_args = abs_args['elmo']
             vocab_to_cache = [w for w, i in sorted(list(word2id.items()), key=itemgetter(1))]
             elmo = get_elmo(dropout=elmo_args.get('dropout', 0),
-                            vocab_to_cache=vocab_to_cache)
+                            vocab_to_cache=vocab_to_cache,
+                            cuda=cuda)
             del abs_args['elmo']
 
         abstractor = CopySumm(**abs_args)
