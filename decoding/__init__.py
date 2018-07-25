@@ -144,8 +144,7 @@ def _process_beam(id2word, beam, art_sent):
         seq = []
         for i, attn in zip(hyp.sequence[1:], hyp.attns[:-1]):
             if i == UNK:
-                art_sent[max(range(len(art_sent)),
-                             key=lambda j: attn[j].item())]
+                seq.append(art_sent[max(range(len(art_sent)), key=lambda j: attn[j].item())])
             else:
                 seq.append(id2word[i])
         hyp.sequence = seq
