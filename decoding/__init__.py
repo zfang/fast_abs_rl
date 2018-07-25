@@ -4,6 +4,7 @@ import logging
 import os
 import pickle as pkl
 import re
+import sys
 from datetime import timedelta
 from itertools import starmap
 from operator import itemgetter
@@ -14,10 +15,9 @@ import torch
 from cytoolz import curry
 from cytoolz import identity
 
-import sys
 sys.path.append("..")
 
-from data.batcher import convert2id, pad_batch_tensorize
+from data.batcher import convert2id, pad_batch_tensorize, tokenize
 from data.data import CnnDmDataset
 from model.copy_summ import CopySumm
 from model.extract import ExtractSumm, PtrExtractSumm
@@ -25,6 +25,7 @@ from model.rl import ActorCritic
 from utils import PAD, UNK, START, END, get_elmo
 from utils import rerank_mp
 from .postprocessing import postprocess
+
 
 class DecodeDataset(CnnDmDataset):
     """ get the article sentences only (for decoding use)"""
@@ -262,17 +263,15 @@ def load_models(model_dir, beam_size, max_len, cuda):
 
 
 def decode(raw_sentences,
-           model_dir,
+           extractor,
+           abstractor,
            beam_size,
            diverse,
-           max_len,
-           cuda,
            postpro):
     start = time()
     # setup model
-    extractor, abstractor = load_models(model_dir=model_dir, beam_size=beam_size, max_len=max_len, cuda=cuda)
 
-    tokenized_sentences = []
+    tokenized_sentences = list(map(tokenize(None), raw_sentences))
     ext = extractor(tokenized_sentences)[:-1]  # exclude EOE
     if not ext:
         # use top-5 if nothing is extracted

@@ -39,7 +39,7 @@ def is_ascii(s):
 
 def correct_spelling(tokens, threshold=1e-6):
     for i in range(len(tokens)):
-        if word_frequency(tokens[i], 'en') != 0 or not is_ascii(tokens[i]):
+        if word_frequency(tokens[i], 'en') > threshold / 10 or not is_ascii(tokens[i]):
             continue
         unknowns = SPELL.unknown([tokens[i]])
         if not unknowns:

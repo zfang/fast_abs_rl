@@ -39,6 +39,9 @@ def postprocess(decoded_tokens):
     for dec in decoded_tokens:
         while dec[0] in TERMINAL_PUNCTUATION:
             dec.pop(0)
+        for i in range(len(dec), 0, -1):
+            if dec[i] == dec[i - 1]:
+                dec.pop(i)
 
     decoded_sentences = [' '.join(dec) for dec in decoded_tokens]
     capitalized_decoded_sentences = []
