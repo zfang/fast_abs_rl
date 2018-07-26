@@ -5,9 +5,7 @@ https://packaging.python.org/en/latest/distributing.html
 https://github.com/pypa/sampleproject
 """
 
-import errno
 import os
-import shutil
 # To use a consistent encoding
 from codecs import open
 
@@ -35,32 +33,6 @@ with open(os.path.join(here, 'requirements.txt'), encoding='utf-8') as f:
 
 reqs = list(filter(lambda elem: len(elem) > 0, reqs))
 deps = list(filter(lambda elem: len(elem) > 0, deps))
-
-
-def copyanything(src, dst):
-    try:
-        shutil.copytree(src, dst)
-    except OSError as exc:  # python >2.5
-        if exc.errno == errno.ENOTDIR:
-            shutil.copy2(src, dst)
-        else:
-            raise
-
-
-FILES_TO_COPY = ('preprocess', 'model', 'utils', 'decoding', 'data', '__init__.py', '__main__.py')
-
-package_dir = os.path.join(here, 'fast_abs_rl/')
-os.makedirs(package_dir, exist_ok=True)
-
-for src in FILES_TO_COPY:
-    dst = os.path.join(package_dir, src)
-    if os.path.exists(dst):
-        if os.path.isfile(dst):
-            os.remove(dst)
-        else:
-            shutil.rmtree(dst)
-
-    copyanything(src, dst)
 
 setup(
     name='fast-abs-rl',
@@ -102,6 +74,3 @@ setup(
         'console_scripts': [],
     },
 )
-
-# clean up
-shutil.rmtree(package_dir)

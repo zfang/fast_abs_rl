@@ -4,7 +4,6 @@ import logging
 import os
 import pickle as pkl
 import re
-import sys
 from itertools import starmap
 from operator import itemgetter
 from os.path import join
@@ -14,15 +13,12 @@ import torch
 from cytoolz import curry
 from cytoolz import identity
 
-sys.path.append("..")
-
-from data.batcher import convert2id, pad_batch_tensorize, tokenize
-from data.data import CnnDmDataset
-from model.copy_summ import CopySumm
-from model.extract import ExtractSumm, PtrExtractSumm
-from model.rl import ActorCritic
-from utils import PAD, UNK, START, END, get_elmo
-from utils import rerank_mp
+from fast_abs_rl.data.batcher import convert2id, pad_batch_tensorize, tokenize
+from fast_abs_rl.data.data import CnnDmDataset
+from fast_abs_rl.model.copy_summ import CopySumm
+from fast_abs_rl.model.extract import ExtractSumm, PtrExtractSumm
+from fast_abs_rl.model.rl import ActorCritic
+from fast_abs_rl.utils import PAD, UNK, START, END, get_elmo, rerank_mp
 from .postprocess import postprocess
 
 
@@ -89,7 +85,7 @@ class Abstractor(object):
         ext_id2word = dict(self._id2word)
         for raw_words in raw_article_sents:
             for w in raw_words:
-                if not w in ext_word2id:
+                if w not in ext_word2id:
                     ext_word2id[w] = len(ext_word2id)
                     ext_id2word[len(ext_id2word)] = w
         articles = convert2id(UNK, self._word2id, raw_article_sents)

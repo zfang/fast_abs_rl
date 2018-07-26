@@ -14,17 +14,17 @@ from torch import optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 
-from data.batcher import tokenize
-from data.data import CnnDmDataset
-from decoding import Abstractor, RLExtractor, ArticleBatcher, BeamAbstractor
-from decoding import load_best_ckpt
+from fast_abs_rl.data.batcher import tokenize
+from fast_abs_rl.data.data import CnnDmDataset
+from fast_abs_rl.decoding import Abstractor, RLExtractor, ArticleBatcher, BeamAbstractor
+from fast_abs_rl.decoding import load_best_ckpt
+from fast_abs_rl.model.extract import PtrExtractSumm
+from fast_abs_rl.model.rl import ActorCritic
+from fast_abs_rl.utils import get_elmo
 from metric import compute_rouge_l, compute_rouge_n
-from model.extract import PtrExtractSumm
-from model.rl import ActorCritic
 from rl import A2CPipeline, set_shift_reward_mean
 from rl import get_grad_fn
 from training import BasicTrainer
-from utils import get_elmo
 
 MAX_ABS_LEN = 30
 

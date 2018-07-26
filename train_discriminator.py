@@ -11,13 +11,13 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from data.batcher import BucketedGenerater, pad_batch_tensorize, coll_fn_extract, \
+from fast_abs_rl.data.batcher import BucketedGenerater, pad_batch_tensorize, coll_fn_extract, \
     convert_batch_extract_ptr, prepro_fn_extract, tokenize
-from data.data import CnnDmDataset
-from decoding import Abstractor, BeamAbstractor
-from model.cnn import ConvNet
+from fast_abs_rl.data.data import CnnDmDataset
+from fast_abs_rl.decoding import Abstractor, BeamAbstractor
+from fast_abs_rl.model.cnn import ConvNet
+from fast_abs_rl.utils import UNK, PAD, get_elmo, rerank
 from training import BasicPipeline, BasicTrainer, basic_validate, get_basic_grad_fn
-from utils import UNK, PAD, get_elmo, rerank
 
 BUCKET_SIZE = 6400
 MAX_ABS_LEN = 30

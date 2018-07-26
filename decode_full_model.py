@@ -10,10 +10,9 @@ import torch
 from cytoolz import identity
 from torch.utils.data import DataLoader
 
-from data.batcher import tokenize
-from decoding import Abstractor, RLExtractor, DecodeDataset, BeamAbstractor
-from decoding import make_html_safe
-from utils import rerank_mp
+from fast_abs_rl.data.batcher import tokenize
+from fast_abs_rl.decoding import Abstractor, RLExtractor, DecodeDataset, BeamAbstractor, make_html_safe
+from fast_abs_rl.utils import rerank_mp
 
 try:
     DATASET_DIR = os.environ['DATA']

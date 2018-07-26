@@ -13,10 +13,7 @@ from cytoolz import concat, curry
 from torch import multiprocessing as mp
 from torch import nn
 
-import sys
-sys.path.append("..")
-
-from model.elmo import ElmoWordEmbedding
+from fast_abs_rl.model.elmo import ElmoWordEmbedding
 
 PAD = 0
 UNK = 1

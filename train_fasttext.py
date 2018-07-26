@@ -12,7 +12,7 @@ import numpy as np
 from cytoolz import concatv
 from embeddings import FastTextEmbedding
 
-from utils import count_data
+from fast_abs_rl.utils import count_data
 
 try:
     DATA_DIR = os.environ['DATA']

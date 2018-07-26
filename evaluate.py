@@ -1,14 +1,18 @@
 """ evaluation scripts"""
+import json
 import logging
 import os
 import re
 import subprocess as sp
+from itertools import starmap
 from os.path import join
 from os.path import normpath, basename
 
 from cytoolz import curry
 from pyrouge import Rouge155
 from pyrouge.utils import log
+
+from fast_abs_rl.data.batcher import tokenize
 
 try:
     _ROUGE_PATH = os.environ['ROUGE']
@@ -82,3 +86,67 @@ def eval_meteor(dec_pattern, dec_dir, ref_pattern, ref_dir, force=False):
         _METEOR_PATH, meteor_dec, meteor_ref)
     output = sp.check_output(cmd.split(' '), universal_newlines=True)
     return output
+
+
+def eval_novel_ngrams(data_pattern, data_dir, dec_pattern, dec_dir, ref_pattern, ref_dir, max_n=4):
+    """ Novel ngrams evaluation"""
+    data_matcher = re.compile(data_pattern)
+    data_files = sorted([d for d in os.listdir(data_dir) if data_matcher.match(d)],
+                        key=lambda name: int(name.split('.')[0]))
+    dec_matcher = re.compile(dec_pattern)
+    dec_files = sorted([d for d in os.listdir(dec_dir) if dec_matcher.match(d)],
+                       key=lambda name: int(name.split('.')[0]))
+    ref_matcher = re.compile(ref_pattern)
+    ref_files = sorted([r for r in os.listdir(ref_dir) if ref_matcher.match(r)],
+                       key=lambda name: int(name.split('.')[0]))
+
+    @curry
+    def read_data_file(file_dir, file_name):
+        with open(join(file_dir, file_name)) as f:
+            return tokenize(None, json.load(f)['article'])
+
+    @curry
+    def read_file(file_dir, file_name):
+        with open(join(file_dir, file_name)) as f:
+            return tokenize(None, f.read().splitlines())
+
+    arts = list(map(read_data_file, data_files))
+    decs = list(map(read_file, dec_files))
+    refs = list(map(read_file, ref_files))
+
+    arts_ngrams = [[get_ngrams(sents, i) for i in range(1, max_n + 1)] for sents in arts]
+    decs_ngrams = [[get_ngrams(sents, i) for i in range(1, max_n + 1)] for sents in decs]
+    refs_ngrams = [[get_ngrams(sents, i) for i in range(1, max_n + 1)] for sents in refs]
+
+    decs_novel_ngram_ratios = [list(starmap(find_novel_ngram_ratios, zip(d, a))) for d, a in
+                               zip(decs_ngrams, arts_ngrams)]
+    refs_novel_ngram_ratios = [list(starmap(find_novel_ngram_ratios, zip(r, a))) for r, a in
+                               zip(refs_ngrams, arts_ngrams)]
+
+    joined_arts = [' '.join(' '.join(tokens) for tokens in sents) for sents in arts]
+
+    decs_novel_sent_ratios = [sum(map(lambda x: int(x not in joined_arts[i]),
+                                      (' '.join(tokens) for tokens in sents))) / len(sents)
+                              for i, sents in enumerate(decs)]
+
+    refs_novel_sent_ratios = [sum(map(lambda x: int(x not in joined_arts[i]),
+                                      (' '.join(tokens) for tokens in sents))) / len(sents)
+                              for i, sents in enumerate(refs)]
+
+    return decs_novel_ngram_ratios, refs_novel_ngram_ratios, decs_novel_sent_ratios, refs_novel_sent_ratios
+
+
+def find_novel_ngrams(dec_ngrams, art_ngrams):
+    return [dec - art for dec, art in zip(dec_ngrams, art_ngrams)]
+
+
+def find_novel_ngram_ratios(dec_ngrams, art_ngrams):
+    return [len(n) / len(d) for n, d in zip(find_novel_ngrams(dec_ngrams, art_ngrams), dec_ngrams)]
+
+
+def get_ngrams(sents, n):
+    assert n >= 1
+    if n == 1:
+        return set(token for sent in sents for token in sent)
+    else:
+        return set(' '.join(ngram) for sent in sents for ngram in zip(*[sent[j:] for j in range(n)]))

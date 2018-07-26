@@ -8,8 +8,8 @@ from time import time
 
 from cytoolz import curry, compose
 
+from fast_abs_rl.utils import count_data
 from metric import compute_rouge_l
-from utils import count_data
 
 try:
     DATA_DIR = os.environ['DATA']

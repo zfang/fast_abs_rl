@@ -18,18 +18,16 @@ for word in WORDS_TO_CAPITALIZE_STOP_WORDS:
 
 WORDS_TO_CAPITALIZE_PATTERN = re.compile(r'\b({})\b'.format('|'.join(WORDS_TO_CAPITALIZE_MAP.keys())))
 
-CONTRACTION_SUFFIX_PATTERN = re.compile(r'\b\s+({})\b'.format('|'.join(
-    (
-        "n\'t",
-        "\'re"
-        "\'s",
-        "\'d",
-        "\'ll"
-        "\'t",
-        "\'ve",
-        "\'m",
-    )
-)))
+CONTRACTION_SUFFIX_PATTERN = re.compile(r'\b(({}))\b'.format('|'.join(map(lambda x: r'\s+' + x, (
+    "n\'t",
+    "\'re",
+    "\'s",
+    "\'d",
+    "\'ll"
+    "\'t",
+    "\'ve",
+    "\'m",
+)))))
 
 SPACY_PARSER = spacy.load('en_core_web_sm', diable=['ner', 'tagger'])
 

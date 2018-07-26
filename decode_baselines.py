@@ -10,9 +10,8 @@ import torch
 from cytoolz import identity
 from torch.utils.data import DataLoader
 
-from data.batcher import tokenize
-from decoding import Abstractor, Extractor, DecodeDataset
-from decoding import make_html_safe
+from fast_abs_rl.data.batcher import tokenize
+from fast_abs_rl.decoding import Abstractor, Extractor, DecodeDataset, make_html_safe
 
 MAX_ABS_NUM = 6  # need to set max sentences to extract for non-RL extractor
 

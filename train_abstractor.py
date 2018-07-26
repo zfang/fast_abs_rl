@@ -12,16 +12,16 @@ from torch.nn import functional as F
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 
-from data.batcher import BucketedGenerater
-from data.batcher import coll_fn, prepro_fn
-from data.batcher import convert_batch_copy, batchify_fn_copy
-from data.data import CnnDmDataset
-from model.copy_summ import CopySumm
-from model.util import sequence_loss
+from fast_abs_rl.data.batcher import BucketedGenerater
+from fast_abs_rl.data.batcher import coll_fn, prepro_fn
+from fast_abs_rl.data.batcher import convert_batch_copy, batchify_fn_copy
+from fast_abs_rl.data.data import CnnDmDataset
+from fast_abs_rl.model.copy_summ import CopySumm
+from fast_abs_rl.model.util import sequence_loss
+from fast_abs_rl.utils import PAD, UNK, START, END, get_elmo
+from fast_abs_rl.utils import make_vocab, make_embedding
 from training import BasicPipeline, BasicTrainer
 from training import get_basic_grad_fn, basic_validate
-from utils import PAD, UNK, START, END, get_elmo
-from utils import make_vocab, make_embedding
 
 # NOTE: bucket size too large may sacrifice randomness,
 #       to low may increase # of PAD tokens

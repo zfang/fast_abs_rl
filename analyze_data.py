@@ -12,7 +12,7 @@ import spacy
 from scipy import stats
 from tqdm import tqdm
 
-from preprocess.pos_tags import POS_TAGS
+from fast_abs_rl.preprocess import POS_TAGS
 
 spacy_tagger = spacy.load('en_core_web_sm', disable=['ner', 'parser'])
 

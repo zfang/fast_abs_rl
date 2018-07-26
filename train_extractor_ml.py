@@ -12,17 +12,17 @@ from torch.nn import functional as F
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 
-from data.batcher import BucketedGenerater
-from data.batcher import coll_fn_extract, prepro_fn_extract
-from data.batcher import convert_batch_extract_ff, batchify_fn_extract_ff
-from data.batcher import convert_batch_extract_ptr, batchify_fn_extract_ptr
-from data.data import CnnDmDataset
-from model.extract import ExtractSumm, PtrExtractSumm
-from model.util import sequence_loss
+from fast_abs_rl.data.batcher import BucketedGenerater
+from fast_abs_rl.data.batcher import coll_fn_extract, prepro_fn_extract
+from fast_abs_rl.data.batcher import convert_batch_extract_ff, batchify_fn_extract_ff
+from fast_abs_rl.data.batcher import convert_batch_extract_ptr, batchify_fn_extract_ptr
+from fast_abs_rl.data.data import CnnDmDataset
+from fast_abs_rl.model.extract import ExtractSumm, PtrExtractSumm
+from fast_abs_rl.model.util import sequence_loss
+from fast_abs_rl.utils import PAD, UNK, get_elmo
+from fast_abs_rl.utils import make_vocab, make_embedding
 from training import BasicPipeline, BasicTrainer
 from training import get_basic_grad_fn, basic_validate
-from utils import PAD, UNK, get_elmo
-from utils import make_vocab, make_embedding
 
 BUCKET_SIZE = 6400
 

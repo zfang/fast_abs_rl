@@ -10,10 +10,10 @@ from torch import autograd
 from torch.nn import functional as F
 from torch.nn.utils import clip_grad_norm_
 
-from utils import rerank
-from decoding import BeamAbstractor
+from fast_abs_rl.decoding import BeamAbstractor
+from fast_abs_rl.model.util import get_device
+from fast_abs_rl.utils import rerank
 from metric import compute_rouge_l, compute_rouge_n
-from model.util import get_device
 from training import BasicPipeline
 
 SHIFT_REWARD_MEAN = False
