@@ -4,6 +4,7 @@ import logging
 import os
 import re
 import subprocess as sp
+from functools import reduce
 from itertools import starmap
 from os.path import join
 from os.path import normpath, basename
@@ -133,7 +134,29 @@ def eval_novel_ngrams(data_pattern, data_dir, dec_pattern, dec_dir, ref_pattern,
                                       (' '.join(tokens) for tokens in sents))) / len(sents)
                               for i, sents in enumerate(refs)]
 
-    return decs_novel_ngram_ratios, refs_novel_ngram_ratios, decs_novel_sent_ratios, refs_novel_sent_ratios
+    decs_novel_ngram_ratios_all = [n.append(s) for n, s in zip(decs_novel_ngram_ratios, decs_novel_sent_ratios)]
+
+    refs_novel_ngram_ratios_all = [n.append(s) for n, s in zip(refs_novel_ngram_ratios, refs_novel_sent_ratios)]
+
+    def compute_averages(ratios):
+        ratio_sums = reduce(lambda x, y: [sum(a, b) for a, b in zip(x, y)], ratios)
+        return [ratio_sum / len(ratios) for ratio_sum in ratio_sums]
+
+    decs_novel_ngram_ratio_means = compute_averages(decs_novel_ngram_ratios_all)
+    decs_novel_ngram_ratio_data = {
+        'dec_novel_{}_gram_ratio'.format(i): r for i, r in enumerate(decs_novel_ngram_ratio_means)
+        if i != len(decs_novel_ngram_ratio_means) - 1
+    }
+    decs_novel_ngram_ratio_data['dec_novel_sent_ratio'] = decs_novel_ngram_ratio_means[-1]
+
+    refs_novel_ngram_ratio_means = compute_averages(refs_novel_ngram_ratios_all)
+    refs_novel_ngram_ratio_data = {
+        'ref_novel_{}_gram_ratio'.format(i): r for i, r in enumerate(refs_novel_ngram_ratio_means)
+        if i != len(refs_novel_ngram_ratio_means) - 1
+    }
+    refs_novel_ngram_ratio_data['ref_novel_sent_ratio'] = refs_novel_ngram_ratio_means[-1]
+
+    return {**decs_novel_ngram_ratio_data, **refs_novel_ngram_ratio_data}
 
 
 def find_novel_ngrams(dec_ngrams, art_ngrams):
