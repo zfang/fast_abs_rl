@@ -9,6 +9,8 @@ from operator import itemgetter
 from os.path import join
 from time import time
 
+import numpy as np
+import pandas as pd
 import torch
 from cytoolz import curry
 from cytoolz import identity
@@ -100,7 +102,7 @@ class Abstractor(object):
                     START, END, UNK, self._max_len)
         return dec_args, ext_id2word
 
-    def __call__(self, raw_article_sents):
+    def __call__(self, raw_article_sents, debug=False):
         self._net.eval()
         dec_args, id2word = self._prepro(raw_article_sents)
         decs, attns = self._net.batch_decode(*dec_args)
@@ -119,6 +121,11 @@ class Abstractor(object):
                 else:
                     dec.append(id2word[id_[i].item()])
             dec_sents.append(dec)
+
+        if debug:
+            abs_attns = np.array([t.numpy() for t in attns]).transpose((1, 0, 2))
+            return dec_sents, [[t for t in attn[:len(dec_sents[i])]] for i, attn in enumerate(abs_attns)]
+
         return dec_sents
 
 
@@ -144,7 +151,6 @@ def _process_beam(id2word, beam, art_sent):
                 seq.append(id2word[i])
         hyp.sequence = seq
         del hyp.hists
-        del hyp.attns
         return hyp
 
     return list(map(process_hyp, beam))
@@ -266,7 +272,8 @@ def decode(raw_sentences,
            abstractor,
            beam_size,
            diverse=1,
-           postpro=False):
+           postpro=False,
+           debug=False):
     with torch.no_grad():
         start = time()
         # setup model
@@ -283,16 +290,29 @@ def decode(raw_sentences,
 
         if beam_size > 1:
             all_beams = abstractor(ext_sentences, beam_size, diverse)
-            dec_outs = rerank_mp(all_beams, [(0, len(ext_sentences))])
+            dec_outs = rerank_mp(all_beams, [(0, len(ext_sentences))], debug=debug)
         else:
-            dec_outs = abstractor(ext_sentences)
+            dec_outs = abstractor(ext_sentences, debug=debug)
+
+        attns = None
+        if debug:
+            dec_outs, attns = dec_outs
+            attns = [[t[:len(ext_sentences[i])] for t in attn] for i, attn in enumerate(attns)]
+            source_col_name = 'source'
+            attns = [pd.DataFrame({
+                source_col_name: ext_sentences[i],
+                **{dec_outs[i][j]: t for j, t in enumerate(attn)},
+            }).set_index(source_col_name) for i, attn in enumerate(attns)]
 
         if postpro:
             decoded_sentences = postprocess(dec_outs)
         else:
             decoded_sentences = [' '.join(dec) for dec in dec_outs]
 
-        logging.info('Decoded {} sentences in {:.3f}s'.format(len(raw_sentences),
+        logging.info('decoded {} sentences in {:.3f}s'.format(len(raw_sentences),
                                                               time() - start))
+
+        if debug:
+            return decoded_sentences, attns
 
         return decoded_sentences

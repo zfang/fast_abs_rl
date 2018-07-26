@@ -4,7 +4,7 @@ import spacy
 
 from .constants import DAYS, MONTHS, NAMES, USCITIES, NA_STATES, COUNTRIES, NATIONALITIES
 
-TERMINAL_PUNCTUATION = list("""!,.:;?@""")
+TERMINAL_PUNCTUATION = list("""!,.:;?""")
 
 PUNCTUATION_SPACE_PATTERN = re.compile(r'(\s+[{}])'.format(
     ''.join(re.escape(p) for p in TERMINAL_PUNCTUATION)))
@@ -34,8 +34,11 @@ SPACY_PARSER = spacy.load('en_core_web_sm', diable=['ner', 'tagger'])
 
 def postprocess(decoded_tokens):
     for dec in decoded_tokens:
-        while dec[0] in TERMINAL_PUNCTUATION:
-            dec.pop(0)
+        # remove terminal punctuations that appear as the first or second token
+        for i in (0, 1):
+            while dec[i] in TERMINAL_PUNCTUATION:
+                dec.pop(i)
+        # remove repetitive unigram
         for i in range(len(dec) - 1, 0, -1):
             if dec[i] == dec[i - 1]:
                 dec.pop(i)

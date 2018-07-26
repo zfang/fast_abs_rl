@@ -1,10 +1,19 @@
 import argparse
 import json
 import logging
+import os
 import sys
 from time import time
 
+import matplotlib
+from tqdm import tqdm
+
 from fast_abs_rl import preprocess, load_models, decode
+
+matplotlib.use('Agg')
+
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-i', '--input-file', required=True)
@@ -18,6 +27,7 @@ parser.add_argument('-l', '--limit', type=int, default=0)
 parser.add_argument('--lambda_', type=float, default=1)
 parser.add_argument('--prepro', action='store_true')
 parser.add_argument('--postpro', action='store_true')
+parser.add_argument('--debug', action='store_true')
 parser.add_argument('--logging-level', choices=('critical',
                                                 'fatal',
                                                 'error',
@@ -65,7 +75,21 @@ result = decode(raw_sentences,
                 abstractor,
                 beam_size=args.beam_size,
                 diverse=args.diverse,
-                postpro=args.postpro)
+                postpro=args.postpro,
+                debug=args.debug)
+
+if args.debug:
+    result, attns = result
+    input_file_name, _ = os.path.splitext(args.input_file)
+    model_dir = os.path.basename(args.model_dir)
+    logging.info('creating heat maps...')
+    for i in tqdm(range(len(attns))):
+        attn = attns[i]
+        plt.figure(figsize=(10, min(10, 2 * len(attn) // len(attn.columns))))
+        sns.heatmap(attn, linewidths=0.1)
+        plt.savefig("{}_{}_heatmap_{}.png".format(input_file_name, model_dir, i), dpi=300, bbox_inches='tight')
+        plt.clf()
+        attn.to_csv("{}_{}_heatmap_{}.csv".format(input_file_name, model_dir, i))
 
 if args.output_file:
     out = open(args.output_file, 'w', encoding='utf8')

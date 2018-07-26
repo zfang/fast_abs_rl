@@ -154,22 +154,29 @@ def preprocess(texts,
     else:
         parser = SPACY
 
-    for doc, score in zip(parser.pipe(map(clean_text, texts), n_threads=(os.cpu_count() // 4) or 1, batch_size=10000),
-                          relevance_scores):
-        if doc.text in found_sentences:
-            log_removed(doc.text, 'duplicate')
-            continue
-        found_sentences.add(doc.text)
+    def pre_filter(text):
+        if text in found_sentences:
+            log_removed(text, 'duplicate')
+            return False
 
+        return True
+
+    def post_filter(text):
+        if contains_personal_info(text):
+            log_removed(text, 'personal info')
+            return False
+
+        return True
+
+    for doc, score in zip(parser.pipe(filter(post_filter, map(clean_text, filter(pre_filter, texts))),
+                                      n_threads=(os.cpu_count() // 4) or 1,
+                                      batch_size=10000),
+                          relevance_scores):
         if not (min_threshold <= len(doc) <= max_threshold):
             log_removed(doc.text, 'token count {} is out of range [{}, {}]'.format(
                 len(doc),
                 min_threshold,
                 max_threshold))
-            continue
-
-        if contains_personal_info(doc.text):
-            log_removed(doc.text, 'personal info')
             continue
 
         if pos_tagging:

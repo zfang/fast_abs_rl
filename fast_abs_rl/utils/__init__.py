@@ -91,19 +91,20 @@ def get_elmo(dropout=0.5, requires_grad=False, vocab_to_cache=None, projection_d
     return elmo
 
 
-def rerank(all_beams, ext_inds):
+def rerank(all_beams, ext_inds, debug=False):
     beam_lists = (all_beams[i: i + n] for i, n in ext_inds if n > 0)
-    return list(concat(map(rerank_one, beam_lists)))
+    return list(concat(map(rerank_one(debug=debug), beam_lists)))
 
 
-def rerank_mp(all_beams, ext_inds):
+def rerank_mp(all_beams, ext_inds, debug=False):
     beam_lists = [all_beams[i: i + n] for i, n in ext_inds if n > 0]
     with mp.Pool(os.cpu_count() or 1) as pool:
-        reranked = pool.map(rerank_one, beam_lists)
+        reranked = pool.map(rerank_one(debug=debug), beam_lists)
     return list(concat(reranked))
 
 
-def rerank_one(beams):
+@curry
+def rerank_one(beams, debug=False):
     @curry
     def process_beam(beam, n):
         for b in beam[:n]:
@@ -113,6 +114,10 @@ def rerank_one(beams):
     beams = map(process_beam(n=_PRUNE[len(beams)]), beams)
     best_hyps = max(product(*beams), key=_compute_score)
     dec_outs = [h.sequence for h in best_hyps]
+
+    if debug:
+        return dec_outs, [[t.numpy() for t in hyp.attns[:-1]] for hyp in best_hyps]
+
     return dec_outs
 
 
