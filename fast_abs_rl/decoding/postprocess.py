@@ -18,7 +18,7 @@ for word in WORDS_TO_CAPITALIZE_STOP_WORDS:
 
 WORDS_TO_CAPITALIZE_PATTERN = re.compile(r'\b({})\b'.format('|'.join(WORDS_TO_CAPITALIZE_MAP.keys())))
 
-CONTRACTION_SUFFIX_PATTERN = re.compile(r'\b(({}))\b'.format('|'.join(map(lambda x: r'\s+' + x, (
+CONTRACTION_SUFFIX_PATTERN = re.compile(r'\b({})\b'.format('|'.join(map(lambda x: r'\s+' + x, (
     "n\'t",
     "\'re",
     "\'s",
