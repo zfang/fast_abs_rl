@@ -200,7 +200,7 @@ def train(args):
 
     # prepare trainer
     grad_fn = get_grad_fn(agent, args.clip)
-    optimizer = optim.Adam(agent.parameters(), **train_params['optimizer'][1])
+    optimizer = optim.Adam(filter(lambda p: p.requires_grad, agent.parameters()), **train_params['optimizer'][1])
     scheduler = ReduceLROnPlateau(optimizer, 'max', verbose=True,
                                   factor=args.decay, min_lr=0,
                                   patience=args.lr_p)
