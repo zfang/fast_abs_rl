@@ -92,6 +92,11 @@ def contains_personal_info(text):
 def clean_text(text):
     try:
         text = text.lower()
+        text = text.replace('—', '-')
+        text = text.replace('–', '-')
+        text = text.replace('―', '-')
+        text = text.replace('…', '...')
+        text = text.replace('´', "'")
         text = re.sub(r'\\$', '', text)
         text = text.encode('utf8').decode('unicode_escape')
         for pattern, to_replace in PATTERNS:

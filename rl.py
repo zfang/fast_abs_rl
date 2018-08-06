@@ -18,6 +18,8 @@ from training import BasicPipeline
 
 SHIFT_REWARD_MEAN = False
 
+ABSTRACTOR_DECODE_BATCH_SIZE = 16
+
 
 def set_shift_reward_mean(val):
     global SHIFT_REWARD_MEAN
@@ -39,7 +41,8 @@ def a2c_validate(agent, abstractor, loader):
                 ext_inds += [(len(ext_sents), len(indices) - 1)]
                 ext_sents += [raw_arts[idx.item()]
                               for idx in indices if idx.item() < len(raw_arts)]
-            all_summs = abstractor(ext_sents)
+            all_summs = list(concat(abstractor(ext_sents[i: i + ABSTRACTOR_DECODE_BATCH_SIZE])
+                                    for i in range(0, len(ext_sents), ABSTRACTOR_DECODE_BATCH_SIZE)))
             if isinstance(abstractor, BeamAbstractor):
                 all_summs = rerank(all_summs, ext_inds)
             for (j, n), abs_sents in zip(ext_inds, abs_batch):
