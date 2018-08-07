@@ -98,6 +98,7 @@ def clean_text(text):
         text = text.replace('…', '...')
         text = text.replace('´', "'")
         text = re.sub(r'\\$', '', text)
+        text = re.sub(r'(\w+)"(.*?)"', r'\1 "\2"', text)
         text = text.encode('utf8').decode('unicode_escape')
         for pattern, to_replace in PATTERNS:
             text = pattern.sub(to_replace, text)
@@ -138,6 +139,7 @@ def preprocess(texts,
                limit=0,
                lambda_=0.4,
                relevance_scores=None,
+               embedding=None,
                pos_tag_distribution=None,
                pos_tag_chisq_critical_value=1e-3,
                check_spelling=False):
@@ -208,10 +210,10 @@ def preprocess(texts,
     if not docs or (limit == 0 and orig_relevance_scores is None):
         return [' '.join(sent) for sent in docs]
 
-    if lambda_ == 1:
+    if lambda_ == 1 or embedding is None:
         return [docs[i] for i in np.argsort(scores)[::-1]]
 
-    sif_embeddings = get_sif_embeddings(lemmas)
+    sif_embeddings = get_sif_embeddings(embedding, lemmas)
     normalized_sif_embeddings = normalize(sif_embeddings, axis=1)
     similarity_matrix = np.dot(normalized_sif_embeddings, np.transpose(normalized_sif_embeddings))
     mmr_sorted = maximal_marginal_relevance_sorted(

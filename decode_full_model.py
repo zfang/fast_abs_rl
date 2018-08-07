@@ -49,7 +49,10 @@ def decode(save_path, model_dir, split, batch_size,
 
     n_data = len(dataset)
     loader = DataLoader(
-        dataset, batch_size=batch_size, shuffle=False, num_workers=4,
+        dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        num_workers=4,
         collate_fn=coll
     )
 

@@ -8,7 +8,7 @@ from time import time
 import matplotlib
 from tqdm import tqdm
 
-from fast_abs_rl import preprocess, load_models, decode
+from fast_abs_rl import preprocess, load_models, decode, get_embedding
 
 matplotlib.use('Agg')
 
@@ -56,18 +56,19 @@ if args.relevance_scores_file:
     with open(args.relevance_scores_file, 'r', encoding='utf8') as f:
         relevance_scores = list(map(float, f.read().splitlines()))
 
-if args.prepro:
-    start = time()
-    raw_sentences = preprocess(texts=raw_sentences,
-                               limit=args.limit,
-                               relevance_scores=relevance_scores)
-    logging.info('preprocess: {0:.3f}s'.format(time() - start))
-
 start = time()
 extractor, abstractor = load_models(model_dir=args.model_dir,
                                     beam_size=args.beam_size,
                                     max_len=args.max_len)
 logging.info('load models: {0:.3f}s'.format(time() - start))
+
+if args.prepro:
+    start = time()
+    raw_sentences = preprocess(texts=raw_sentences,
+                               limit=args.limit,
+                               relevance_scores=relevance_scores,
+                               embedding=get_embedding(extractor))
+    logging.info('preprocess: {0:.3f}s'.format(time() - start))
 
 start = time()
 result = decode(raw_sentences,

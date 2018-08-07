@@ -4,14 +4,11 @@ from collections import defaultdict
 from functools import partial
 
 import numpy as np
-from embeddings import GloveEmbedding
 from sklearn.decomposition import TruncatedSVD
 from wordfreq import word_frequency
 
 PAD = 0
 UNK = 1
-
-GLOVE_EMBEDDING = GloveEmbedding()
 
 WEIGHT_FILE = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'enwiki_vocab_min200.txt')
 
@@ -81,7 +78,7 @@ def random_word_emb(dim):
     return np.random.uniform(-bound, bound, dim).astype('float32')
 
 
-def get_word_embeddings(sentences):
+def get_word_embeddings(embedding, sentences):
     vocab = {token for sent in sentences for token in sent}
     word2id = defaultdict(lambda: UNK)
     word2id['<pad>'] = PAD
@@ -92,9 +89,9 @@ def get_word_embeddings(sentences):
     id2word = np.asarray([word for word, _ in sorted(word2id.items(), key=operator.itemgetter(1))])
 
     word_emb = np.asarray([
-        GLOVE_EMBEDDING.emb(
+        embedding.get(
             id2word[i],
-            default=partial(random_word_emb, GLOVE_EMBEDDING.d_emb))
+            default=partial(random_word_emb, embedding.d_emb))
         for i in range(len(word2id))
     ])
 
@@ -114,8 +111,8 @@ def prepare_data(list_of_seqs, dtype='float32'):
     return x, x_mask
 
 
-def get_sif_embeddings(sentences):
-    word2id, id2word, word_emb = get_word_embeddings(sentences)
+def get_sif_embeddings(embedding, sentences):
+    word2id, id2word, word_emb = get_word_embeddings(embedding, sentences)
     word_weights = get_word_weights(word2id.keys())
     x, _ = prepare_data(np.asarray([[word2id[word] for word in sent] for sent in sentences]), dtype='int32')
     w, _ = prepare_data(np.asarray([[word_weights[word] for word in sent] for sent in sentences]), dtype='float32')
