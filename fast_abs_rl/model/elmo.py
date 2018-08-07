@@ -27,8 +27,13 @@ class ElmoWordEmbedding(torch.nn.Module):
                                        projection_dim=projection_dim,
                                        vocab_to_cache=vocab_to_cache)
 
+        self._projection = self._elmo._projection
+
     def get_output_dim(self):
-        return self._elmo.get_output_dim()
+        if self._projection is not None:
+            return self._projection.out_features
+        else:
+            return self._elmo.get_output_dim()
 
     def forward(self, word_inputs: torch.Tensor) -> torch.Tensor:
         if len(word_inputs.shape) == 1:
@@ -37,7 +42,10 @@ class ElmoWordEmbedding(torch.nn.Module):
 
     @property
     def weight(self):
-        return torch.cat((self.word_embedding.weight, self.word_embedding.weight), dim=1)
+        embedding_weight = torch.cat((self.word_embedding.weight, self.word_embedding.weight), dim=1)
+        if self._projection:
+            embedding_weight = self._projection(embedding_weight)
+        return embedding_weight
 
     @property
     def num_embeddings(self):

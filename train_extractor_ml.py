@@ -135,7 +135,8 @@ def main(args):
     if args.elmo:
         elmo = get_elmo(dropout=args.elmo_dropout,
                         vocab_to_cache=[id2words[i] for i in range(len(id2words))],
-                        cuda=args.cuda)
+                        cuda=args.cuda,
+                        projection_dim=args.elmo_projection)
         args.emb_dim = elmo.get_output_dim()
 
     train_batcher, val_batcher = build_batchers(args.net_type,
@@ -150,7 +151,8 @@ def main(args):
 
     if elmo:
         net_args['elmo'] = {
-            'elmo_dropout': args.elmo_dropout
+            'dropout': args.elmo_dropout,
+            'projection': args.elmo_projection,
         }
         net.set_elmo_embedding(elmo)
     elif args.w2v:
@@ -254,6 +256,8 @@ if __name__ == '__main__':
                         help='augment embedding with elmo')
     parser.add_argument('--elmo-dropout', type=float, default=0,
                         help='the probability for elmo dropout')
+    parser.add_argument('--elmo-projection', type=int, default=None,
+                        help='projection dimension for elmo')
     args = parser.parse_args()
     args.bi = not args.no_bi
     args.cuda = torch.cuda.is_available() and not args.no_cuda

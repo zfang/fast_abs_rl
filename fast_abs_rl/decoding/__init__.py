@@ -69,7 +69,8 @@ class Abstractor(object):
             vocab_to_cache = [w for w, i in sorted(list(word2id.items()), key=itemgetter(1))]
             elmo = get_elmo(dropout=elmo_args.get('dropout', 0),
                             vocab_to_cache=vocab_to_cache,
-                            cuda=cuda)
+                            cuda=cuda,
+                            projection_dim=elmo_args.get('projection_dim', None))
             del abs_args['elmo']
 
         abstractor = CopySumm(**abs_args)
@@ -212,7 +213,8 @@ class RLExtractor(object):
             vocab_to_cache = [w for w, i in sorted(list(word2id.items()), key=itemgetter(1))]
             elmo = get_elmo(dropout=elmo_args.get('dropout', 0),
                             vocab_to_cache=vocab_to_cache,
-                            cuda=cuda)
+                            cuda=cuda,
+                            projection_dim=elmo_args.get('projection_dim', None))
             del ext_args['elmo']
         extractor = PtrExtractSumm(**ext_args)
         if elmo is not None:
