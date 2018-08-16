@@ -1,7 +1,7 @@
 """ ROUGE utils"""
 import os
-import threading
 import subprocess as sp
+import threading
 from collections import Counter, deque
 
 from cytoolz import concat, curry
@@ -9,8 +9,9 @@ from cytoolz import concat, curry
 
 def make_n_grams(seq, n):
     """ return iterator """
-    ngrams = (tuple(seq[i:i+n]) for i in range(len(seq)-n+1))
+    ngrams = (tuple(seq[i:i + n]) for i in range(len(seq) - n + 1))
     return ngrams
+
 
 def _n_gram_match(summ, ref, n):
     summ_grams = Counter(make_n_grams(summ, n))
@@ -18,6 +19,7 @@ def _n_gram_match(summ, ref, n):
     grams = min(summ_grams, ref_grams, key=len)
     count = sum(min(summ_grams[g], ref_grams[g]) for g in grams)
     return count
+
 
 @curry
 def compute_rouge_n(output, reference, n=1, mode='f'):
@@ -41,21 +43,23 @@ def compute_rouge_n(output, reference, n=1, mode='f'):
 
 def _lcs_dp(a, b):
     """ compute the len dp of lcs"""
-    dp = [[0 for _ in range(0, len(b)+1)]
-          for _ in range(0, len(a)+1)]
+    dp = [[0 for _ in range(0, len(b) + 1)]
+          for _ in range(0, len(a) + 1)]
     # dp[i][j]: lcs_len(a[:i], b[:j])
-    for i in range(1, len(a)+1):
-        for j in range(1, len(b)+1):
-            if a[i-1] == b[j-1]:
-                dp[i][j] = dp[i-1][j-1] + 1
+    for i in range(1, len(a) + 1):
+        for j in range(1, len(b) + 1):
+            if a[i - 1] == b[j - 1]:
+                dp[i][j] = dp[i - 1][j - 1] + 1
             else:
-                dp[i][j] = max(dp[i-1][j], dp[i][j-1])
+                dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])
     return dp
+
 
 def _lcs_len(a, b):
     """ compute the length of longest common subsequence between a and b"""
     dp = _lcs_dp(a, b)
     return dp[-1][-1]
+
 
 @curry
 def compute_rouge_l(output, reference, mode='f'):
@@ -86,16 +90,17 @@ def _lcs(a, b):
     j = len(b)
     lcs = deque()
     while i > 0 and j > 0:
-        if a[i-1] == b[j-1]:
-            lcs.appendleft(a[i-1])
+        if a[i - 1] == b[j - 1]:
+            lcs.appendleft(a[i - 1])
             i -= 1
             j -= 1
-        elif dp[i-1][j] >= dp[i][j-1]:
+        elif dp[i - 1][j] >= dp[i][j - 1]:
             i -= 1
         else:
             j -= 1
     assert len(lcs) == dp[-1][-1]
     return lcs
+
 
 def compute_rouge_l_summ(summs, refs, mode='f'):
     """ summary level ROUGE-L"""
@@ -131,6 +136,8 @@ try:
 except KeyError:
     print('Warning: METEOR is not configured')
     _METEOR_PATH = None
+
+
 class Meteor(object):
     def __init__(self):
         assert _METEOR_PATH is not None

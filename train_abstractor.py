@@ -16,6 +16,7 @@ from fast_abs_rl.data.batcher import BucketedGenerater
 from fast_abs_rl.data.batcher import coll_fn, prepro_fn
 from fast_abs_rl.data.batcher import convert_batch_copy, batchify_fn_copy
 from fast_abs_rl.data.data import CnnDmDataset
+from fast_abs_rl.decoding import Abstractor
 from fast_abs_rl.model.copy_summ import CopySumm
 from fast_abs_rl.model.util import sequence_loss
 from fast_abs_rl.utils import PAD, UNK, START, END, get_elmo
@@ -116,64 +117,70 @@ def build_batchers(word2id, cuda, debug):
 
 
 def main(args):
-    # create data batcher, vocabulary
-    # batcher
-
-    with open(join(DATA_DIR, 'vocab_cnt.pkl'), 'rb') as f:
-        wc = pkl.load(f)
-    word2id = make_vocab(wc, args.vsize)
-    id2words = {i: w for w, i in word2id.items()}
-
-    elmo = None
-    if args.elmo:
-        elmo = get_elmo(dropout=args.elmo_dropout,
-                        vocab_to_cache=[id2words[i] for i in range(len(id2words))],
-                        cuda=args.cuda,
-                        projection_dim=args.elmo_projection)
-        args.emb_dim = elmo.get_output_dim()
-
-    train_batcher, val_batcher = build_batchers(word2id,
-                                                args.cuda,
-                                                args.debug)
-
-    # make net
-    net, net_args = configure_net(len(word2id),
-                                  args.emb_dim,
-                                  args.n_hidden,
-                                  args.bi,
-                                  args.n_layer,
-                                  args.dropout)
-
-    if elmo:
-        net_args['elmo'] = {
-            'dropout': args.elmo_dropout,
-            'projection': args.elmo_projection,
-        }
-        net.set_elmo_embedding(elmo)
-    elif args.w2v:
-        # NOTE: the pretrained embedding having the same dimension
-        #       as args.emb_dim should already be trained
-        embedding, _ = make_embedding(
-            id2words, args.w2v)
-        net.set_embedding(embedding)
-
     # configure training setting
     criterion, train_params = configure_training(
         'adam', args.lr, args.clip, args.decay, args.batch
     )
 
-    # save experiment setting
-    if not exists(args.path):
-        os.makedirs(args.path)
-    with open(join(args.path, 'vocab.pkl'), 'wb') as f:
-        pkl.dump(word2id, f, pkl.HIGHEST_PROTOCOL)
-    meta = {
-        'net': 'base_abstractor',
-        'net_args': net_args,
-        'traing_params': train_params
-    }
+    # make net
+    if args.restore_model:
+        abstractor = Abstractor(args.path, args.max_abs, args.cuda)
+        word2id = abstractor._word2id
+        meta = abstractor._abs_meta
+        net = abstractor._net
+        meta['training_params'] = train_params
+    else:
+        with open(join(DATA_DIR, 'vocab_cnt.pkl'), 'rb') as f:
+            wc = pkl.load(f)
+        word2id = make_vocab(wc, args.vsize)
+        id2words = {i: w for w, i in word2id.items()}
+
+        elmo = None
+        if args.elmo:
+            elmo = get_elmo(dropout=args.elmo_dropout,
+                            vocab_to_cache=[id2words[i] for i in range(len(id2words))],
+                            cuda=args.cuda,
+                            projection_dim=args.elmo_projection)
+            args.emb_dim = elmo.get_output_dim()
+
+        # make net
+        net, net_args = configure_net(len(word2id),
+                                      args.emb_dim,
+                                      args.n_hidden,
+                                      args.bi,
+                                      args.n_layer,
+                                      args.dropout)
+
+        if elmo:
+            net_args['elmo'] = {
+                'dropout': args.elmo_dropout,
+                'projection': args.elmo_projection,
+            }
+            net.set_elmo_embedding(elmo)
+        elif args.w2v:
+            # NOTE: the pretrained embedding having the same dimension
+            #       as args.emb_dim should already be trained
+            embedding, _ = make_embedding(
+                id2words, args.w2v)
+            net.set_embedding(embedding)
+
+        # save experiment setting
+        if not exists(args.path):
+            os.makedirs(args.path)
+        with open(join(args.path, 'vocab.pkl'), 'wb') as f:
+            pkl.dump(word2id, f, pkl.HIGHEST_PROTOCOL)
+        meta = {
+            'net': 'base_abstractor',
+            'net_args': net_args,
+            'traing_params': train_params
+        }
+
     with open(join(args.path, 'meta.json'), 'w') as f:
         json.dump(meta, f, indent=4)
+
+    train_batcher, val_batcher = build_batchers(word2id,
+                                                args.cuda,
+                                                args.debug)
 
     # prepare trainer
     val_fn = basic_validate(net, criterion)
