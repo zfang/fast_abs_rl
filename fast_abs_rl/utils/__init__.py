@@ -98,7 +98,7 @@ def rerank(all_beams, ext_inds, debug=False):
 
 def rerank_mp(all_beams, ext_inds, debug=False):
     beam_lists = [all_beams[i: i + n] for i, n in ext_inds if n > 0]
-    with mp.Pool(os.cpu_count() or 1) as pool:
+    with mp.get_context("spawn").Pool(os.cpu_count() or 1) as pool:
         reranked = pool.map(rerank_one(debug=debug), beam_lists)
     return list(concat(reranked))
 
