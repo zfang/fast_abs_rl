@@ -69,7 +69,7 @@ def reorder_sequence(sequence_emb, order, batch_first=False):
     assert len(order) == sequence_emb.size()[batch_dim]
 
     order = torch.LongTensor(order).to(get_device())
-    sorted_ = sequence_emb.index_select(index=order, dim=batch_dim)
+    sorted_ = sequence_emb.to(get_device()).index_select(index=order, dim=batch_dim)
 
     return sorted_
 
