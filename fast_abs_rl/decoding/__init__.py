@@ -274,6 +274,7 @@ def decode(raw_sentences,
            abstractor,
            beam_size,
            diverse=1,
+           token_threshold=5,
            postpro=False,
            debug=False):
     with torch.no_grad():
@@ -307,7 +308,7 @@ def decode(raw_sentences,
             }).set_index(source_col_name) for i, attn in enumerate(attns)]
 
         if postpro:
-            decoded_sentences = postprocess(dec_outs)
+            decoded_sentences = postprocess(dec_outs, token_threshold)
         else:
             decoded_sentences = [' '.join(dec) for dec in dec_outs]
 

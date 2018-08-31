@@ -1,4 +1,5 @@
 import re
+from collections import OrderedDict
 
 import spacy
 
@@ -32,18 +33,19 @@ CONTRACTION_SUFFIX_PATTERN = re.compile(r'\b({})\b'.format('|'.join(map(lambda x
 SPACY_PARSER = spacy.load('en_core_web_sm', diable=['ner', 'tagger'])
 
 
-def postprocess(decoded_tokens):
+def postprocess(decoded_tokens, token_threshold):
     for dec in decoded_tokens:
         # remove terminal punctuations that appear as the first or second token
         for i in (0, 1):
-            while dec[i] in TERMINAL_PUNCTUATION:
+            while i < len(dec) and dec[i] in TERMINAL_PUNCTUATION:
                 dec.pop(i)
         # remove repetitive unigram
         for i in range(len(dec) - 1, 0, -1):
             if dec[i] == dec[i - 1]:
                 dec.pop(i)
 
-    decoded_sentences = [' '.join(dec) for dec in decoded_tokens]
+    decoded_sentences = OrderedDict([(' '.join(dec), None) for dec in decoded_tokens
+                                     if len(dec) >= token_threshold]).keys()
     capitalized_decoded_sentences = []
     for doc in SPACY_PARSER.pipe(decoded_sentences):
         capitalized_decoded_sentences.append(' '.join(sent.text.capitalize() for sent in doc.sents))

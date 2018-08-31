@@ -9,7 +9,7 @@ from fast_abs_rl.preprocess import preprocess
 class WordEmbedding:
     def __init__(self, word2id: Dict[str, int], embedding: torch.nn.Embedding):
         self.word2id = word2id
-        self.embedding_data = embedding.weight.data.numpy()
+        self.embedding_data = embedding.weight.data.cpu().numpy()
         self.d_emb = self.embedding_data.shape[1]
 
     def __getitem__(self, item: str):
