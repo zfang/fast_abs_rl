@@ -251,18 +251,17 @@ def load_models(model_dir,
                 cuda=torch.cuda.is_available()):
     with open(os.path.join(model_dir, 'meta.json')) as f:
         meta = json.loads(f.read())
-    if meta['net_args']['abstractor'] is None:
+    abstractor_dir = os.path.join(model_dir, 'abstractor')
+    if meta['net_args']['abstractor'] is None or not os.path.exists(abstractor_dir):
         # NOTE: if no abstractor is provided then
         #       the whole model would be extractive summarization
         assert beam_size == 1
         abstractor = identity
     else:
         if beam_size == 1:
-            abstractor = Abstractor(os.path.join(model_dir, 'abstractor'),
-                                    max_len, cuda)
+            abstractor = Abstractor(abstractor_dir, max_len, cuda)
         else:
-            abstractor = BeamAbstractor(os.path.join(model_dir, 'abstractor'),
-                                        max_len, cuda)
+            abstractor = BeamAbstractor(abstractor_dir, max_len, cuda)
 
     extractor = RLExtractor(model_dir, cuda=cuda)
 
@@ -316,6 +315,6 @@ def decode(raw_sentences,
                                                               time() - start))
 
         if debug:
-            return decoded_sentences, attns
+            return (ext, decoded_sentences), attns
 
-        return decoded_sentences
+        return ext, decoded_sentences

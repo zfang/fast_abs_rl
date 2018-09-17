@@ -97,5 +97,6 @@ if args.output_file:
 else:
     out = sys.stdout
 
-json.dump(result, out, indent=4, ensure_ascii=False)
+ext, decoded = result
+json.dump(decoded, out, indent=4, ensure_ascii=False)
 print()
